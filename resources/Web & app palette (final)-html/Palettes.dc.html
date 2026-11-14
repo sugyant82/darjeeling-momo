@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Web and app palette</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Baloo+2:wght@600;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1F2A44}a:hover{color:#C2412D}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1040px; display: flex; flex-direction: column; background: #FBF6EC; font-family: Inter, system-ui, sans-serif; color: #1F2A44">
+<div style="display: flex; height: 10px" aria-hidden="true">
+<div style="flex: 1; background: #1F2A44"></div><div style="flex: 1; background: #FBF6EC"></div><div style="flex: 1; background: #C2412D"></div><div style="flex: 1; background: #3E6B48"></div><div style="flex: 1; background: #E8A33D"></div><div style="flex: 1; background: #1F2A44"></div><div style="flex: 1; background: #FBF6EC"></div><div style="flex: 1; background: #C2412D"></div><div style="flex: 1; background: #3E6B48"></div><div style="flex: 1; background: #E8A33D"></div>
+</div>
+<div style="flex-grow: 1; box-sizing: border-box; padding: 48px 64px; display: flex; flex-direction: column; gap: 36px">
+<div style="display: flex; align-items: flex-end; justify-content: space-between">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 13px; font-weight: 700; letter-spacing: 3px; color: #8A3020">DARJEELING MOMO · WEB &amp; APP</div>
+<h1 style="margin: 0; font-family: 'Baloo 2', system-ui, sans-serif; font-size: 52px; font-weight: 800; line-height: 1">Brand palette</h1>
+</div>
+<div style="font-size: 15px; color: #4A5168; max-width: 420px; text-align: right">The five prayer-flag colours from the logo, with jobs on the website and in the app. Every text pairing shown passes WCAG AA.</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px">
+<sc-for list="{{brand}}" as="s" hint-placeholder-count="5">
+<div style="height: 250px; border-radius: 16px; box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; background: {{s.hex}}; color: {{s.ink}}; border: 1px solid {{s.edge}}">
+<div style="font-size: 19px; font-weight: 700">{{s.name}}</div>
+<div style="font-size: 14px; font-weight: 500; font-family: ui-monospace, Menlo, monospace">{{s.hex}}</div>
+<div style="font-size: 13px; line-height: 1.45">{{s.role}}</div>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; gap: 40px">
+<div style="flex: 1; display: flex; flex-direction: column; gap: 14px">
+<div style="font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #4A5168">SUPPORTING NEUTRALS</div>
+<div style="display: flex; gap: 12px">
+<sc-for list="{{neutrals}}" as="n" hint-placeholder-count="3">
+<div style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+<div style="height: 64px; border-radius: 12px; background: {{n.hex}}; border: 1px solid #D9CFBA"></div>
+<div style="font-size: 14px; font-weight: 600">{{n.name}}</div>
+<div style="font-size: 13px; color: #4A5168"><span style="font-family: ui-monospace, Menlo, monospace">{{n.hex}}</span> · {{n.role}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 14px">
+<div style="font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #4A5168">BUTTONS &amp; TAGS</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<button type="button" style="height: 48px; padding: 0 24px; border-radius: 24px; border: 0; background: #E8A33D; color: #1F2A44; font-family: Inter, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer">Add to cart</button>
+<button type="button" style="height: 48px; padding: 0 24px; border-radius: 24px; border: 0; background: #1F2A44; color: #FBF6EC; font-family: Inter, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer">Checkout</button>
+<button type="button" style="height: 48px; padding: 0 24px; border-radius: 24px; border: 2px solid #1F2A44; background: transparent; color: #1F2A44; font-family: Inter, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer">View menu</button>
+<span style="font-size: 12px; font-weight: 700; color: #FFFFFF; background: #3E6B48; padding: 5px 10px; border-radius: 12px">VEG</span>
+<span style="font-size: 12px; font-weight: 700; color: #FFFFFF; background: #C2412D; padding: 5px 10px; border-radius: 12px">SPICY</span>
+<span style="font-size: 12px; font-weight: 700; color: #1F2A44; background: #E8A33D; padding: 5px 10px; border-radius: 12px">BESTSELLER</span>
+</div>
+</div>
+</div>
+<div style="display: flex; gap: 40px; padding-top: 24px; border-top: 1px solid #E4DCCB">
+<div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #4A5168">HEADINGS · BALOO 2 EXTRABOLD</div>
+<div style="font-family: 'Baloo 2', system-ui, sans-serif; font-size: 44px; font-weight: 800; line-height: 1">Steamed fresh, the Darjeeling way</div>
+</div>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #4A5168">BODY &amp; UI · INTER</div>
+<div style="font-size: 17px; line-height: 1.55; color: #1F2A44">Hand-folded chicken and veg momos with tomato achar. Order ahead on the web or in the app and pick up hot from the truck.</div>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+renderVals() {
+const sw = (name, hex, ink, role, edge) => ({ name, hex, ink, role, edge: edge || hex });
+return {
+brand: [
+sw('Himalaya Indigo', '#1F2A44', '#FBF6EC', 'Primary. Headers, nav bar, body text, checkout button, app tab bar.'),
+sw('Marigold', '#E8A33D', '#1F2A44', 'Action. Add to cart, cart badge, highlights. Always with indigo text.'),
+sw('Achar Red', '#C2412D', '#FFFFFF', 'Spicy tags, offers, error messages.'),
+sw('Tea Leaf', '#3E6B48', '#FFFFFF', 'Veg labels, order confirmed, success states.'),
+sw('Steam Cream', '#FBF6EC', '#1F2A44', 'Page and screen background.', '#E4DCCB')
+],
+neutrals: [
+{ name: 'Card white', hex: '#FFFFFF', role: 'menu cards, sheets' },
+{ name: 'Oat border', hex: '#E4DCCB', role: 'dividers, card borders' },
+{ name: 'Slate text', hex: '#4A5168', role: 'secondary text' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

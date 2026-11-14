@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+.next/
+out/
+.expo/
+.turbo/
+*.tsbuildinfo
+
+# Env — never commit real keys (see .env.example files)
+.env
+.env.local
+.env.*.local
+apps/web/.env.local
+apps/mobile/.env
+supabase/functions/.env
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+.playwright/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+*.pem
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Expo
+apps/mobile/ios/
+apps/mobile/android/
+apps/mobile/.expo-shared/

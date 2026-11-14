@@ -1,0 +1,51 @@
+{
+  "name": "@darjeeling/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "align": "expo install --check"
+  },
+  "dependencies": {
+    "@darjeeling/shared": "workspace:*",
+    "@darjeeling/tokens": "workspace:*",
+    "@expo-google-fonts/baloo-2": "^0.4.1",
+    "@expo-google-fonts/inter": "^0.4.1",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/netinfo": "12.0.1",
+    "@supabase/supabase-js": "^2.58.0",
+    "@tanstack/react-query": "^5.66.0",
+    "expo": "~58.0.25",
+    "expo-apple-authentication": "~58.0.3",
+    "expo-constants": "~58.0.16",
+    "expo-font": "~58.0.12",
+    "expo-linking": "~58.0.17",
+    "expo-notifications": "~58.1.9",
+    "expo-router": "~58.0.31",
+    "expo-secure-store": "~58.0.3",
+    "expo-splash-screen": "~58.0.14",
+    "expo-status-bar": "~58.0.5",
+    "expo-web-browser": "~58.0.8",
+    "lucide-react-native": "^0.469.0",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-gesture-handler": "~3.3.0",
+    "react-native-reanimated": "4.7.1",
+    "react-native-safe-area-context": "~5.11.1",
+    "react-native-screens": "~4.30.1",
+    "react-native-svg": "15.16.0",
+    "react-native-worklets": "0.13.0",
+    "react-native-url-polyfill": "^2.0.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.8",
+    "typescript": "^5.9.2"
+  }
+}

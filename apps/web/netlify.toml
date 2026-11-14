@@ -1,0 +1,33 @@
+# Netlify config for apps/web. The Next.js runtime is auto-installed by Netlify.
+# Keep the site lean: all server logic (payments, webhooks, order creation) lives
+# in Supabase Edge Functions, so this deploys as mostly static pages + client calls.
+
+[build]
+  # Run from the monorepo root so pnpm workspaces resolve.
+  base = "/"
+  command = "pnpm turbo run build --filter=@darjeeling/web"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  PNPM_VERSION = "9"
+  # Netlify's Next plugin reads the app from this package.
+  NETLIFY_NEXT_PLUGIN_SKIP = "false"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Deploy previews for every PR are free; production deploys use build credits.
+[context.production.environment]
+  INTEGRATIONS_MODE = "production"
+
+[context.deploy-preview.environment]
+  INTEGRATIONS_MODE = "auto"
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

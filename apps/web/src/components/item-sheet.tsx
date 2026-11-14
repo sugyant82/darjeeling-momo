@@ -1,0 +1,172 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import { Minus, Plus, X } from 'lucide-react';
+import { formatNZD, unitPriceCents } from '@darjeeling/shared';
+import type { ItemOption, MenuItem, SelectedOption } from '@darjeeling/shared/types';
+import { useCart } from './cart-context';
+import { useToast } from './toast-context';
+
+type Selection = Record<string, string[]>; // optionId -> choiceIds
+
+function defaultSelection(options: ItemOption[]): Selection {
+  const sel: Selection = {};
+  for (const opt of options) {
+    const def = opt.choices.filter((c) => c.is_default).map((c) => c.id);
+    sel[opt.id] = def.length > 0 ? def : opt.required && opt.choices[0] ? [opt.choices[0].id] : [];
+  }
+  return sel;
+}
+
+export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => void }) {
+  const cart = useCart();
+  const toast = useToast();
+  const [selection, setSelection] = useState<Selection>(() => defaultSelection(item.options));
+  const [quantity, setQuantity] = useState(1);
+  const [adding, setAdding] = useState(false);
+
+  const selectedOptions = useMemo<SelectedOption[]>(() => {
+    const out: SelectedOption[] = [];
+    for (const opt of item.options) {
+      for (const choiceId of selection[opt.id] ?? []) {
+        const choice = opt.choices.find((c) => c.id === choiceId);
+        if (choice) {
+          out.push({
+            optionId: opt.id,
+            optionName: opt.name,
+            choiceId: choice.id,
+            choiceLabel: choice.label,
+            priceDeltaCents: choice.price_delta_cents,
+          });
+        }
+      }
+    }
+    return out;
+  }, [item.options, selection]);
+
+  const unit = unitPriceCents(
+    item.price_cents,
+    selectedOptions.map((o) => o.priceDeltaCents),
+  );
+
+  const missingRequired = item.options.filter(
+    (o) => o.required && (selection[o.id]?.length ?? 0) < Math.max(1, o.min_select),
+  );
+
+  function toggle(opt: ItemOption, choiceId: string) {
+    setSelection((prev) => {
+      const current = prev[opt.id] ?? [];
+      if (opt.max_select <= 1) return { ...prev, [opt.id]: [choiceId] };
+      if (current.includes(choiceId)) {
+        return { ...prev, [opt.id]: current.filter((c) => c !== choiceId) };
+      }
+      if (current.length >= opt.max_select) return prev;
+      return { ...prev, [opt.id]: [...current, choiceId] };
+    });
+  }
+
+  async function add() {
+    if (missingRequired.length > 0) return;
+    setAdding(true);
+    try {
+      await cart.addItem(item, selectedOptions, quantity);
+      toast.show(`${quantity} × ${item.name} added`, 'success');
+      onClose();
+    } catch {
+      toast.show('Could not add to cart. Please try again.', 'error');
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  return (
+    <div
+      className="sheet-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${item.name} options`}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="sheet stack">
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <h2>{item.name}</h2>
+          <button className="btn btn-ghost" aria-label="Close" onClick={onClose}>
+            <X aria-hidden="true" />
+          </button>
+        </div>
+        {item.description ? <p className="muted">{item.description}</p> : null}
+
+        {item.options.map((opt) => (
+          <fieldset key={opt.id} className="stack" style={{ border: 'none', padding: 0, margin: 0 }}>
+            <legend style={{ fontWeight: 700 }}>
+              {opt.name}
+              {opt.required ? <span className="muted"> · required</span> : null}
+              {opt.max_select > 1 ? (
+                <span className="muted"> · choose up to {opt.max_select}</span>
+              ) : null}
+            </legend>
+            {opt.choices.map((choice) => {
+              const checked = (selection[opt.id] ?? []).includes(choice.id);
+              return (
+                <label
+                  key={choice.id}
+                  className="row card card-pad"
+                  style={{ padding: 12, cursor: 'pointer', gap: 10 }}
+                >
+                  <input
+                    type={opt.max_select <= 1 ? 'radio' : 'checkbox'}
+                    name={opt.id}
+                    checked={checked}
+                    onChange={() => toggle(opt, choice.id)}
+                  />
+                  <span style={{ flex: 1 }}>{choice.label}</span>
+                  {choice.price_delta_cents !== 0 ? (
+                    <span className="muted">
+                      {choice.price_delta_cents > 0 ? '+' : ''}
+                      {formatNZD(choice.price_delta_cents)}
+                    </span>
+                  ) : null}
+                </label>
+              );
+            })}
+          </fieldset>
+        ))}
+
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <span style={{ fontWeight: 700 }}>Quantity</span>
+          <div className="row" style={{ gap: 12 }}>
+            <button
+              className="btn btn-outline"
+              aria-label="Decrease quantity"
+              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+            >
+              <Minus size={18} aria-hidden="true" />
+            </button>
+            <strong aria-live="polite" style={{ minWidth: 24, textAlign: 'center' }}>
+              {quantity}
+            </strong>
+            <button
+              className="btn btn-outline"
+              aria-label="Increase quantity"
+              onClick={() => setQuantity((q) => Math.min(50, q + 1))}
+            >
+              <Plus size={18} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        {missingRequired.length > 0 ? (
+          <p className="muted">Please choose: {missingRequired.map((o) => o.name).join(', ')}</p>
+        ) : null}
+
+        <button
+          className="btn btn-action btn-lg btn-block"
+          onClick={add}
+          disabled={missingRequired.length > 0 || adding}
+        >
+          {adding ? 'Adding…' : `Add ${quantity} · ${formatNZD(unit * quantity)}`}
+        </button>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,56 @@
+'use client';
+
+import { Plus } from 'lucide-react';
+import { formatNZD } from '@darjeeling/shared';
+import type { MenuItem } from '@darjeeling/shared/types';
+import { TagBadge } from './ui';
+
+export function MenuCard({ item, onOpen }: { item: MenuItem; onOpen: (item: MenuItem) => void }) {
+  const soldOut = !item.is_available;
+  return (
+    <article className={`card ${soldOut ? 'sold-out' : ''}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={item.image_url ?? '/images/placeholder-momo.svg'}
+        alt=""
+        width={400}
+        height={220}
+        loading="lazy"
+        style={{
+          width: '100%',
+          height: 180,
+          objectFit: 'cover',
+          borderTopLeftRadius: 'var(--radius-card)',
+          borderTopRightRadius: 'var(--radius-card)',
+        }}
+      />
+      <div className="card-pad stack" style={{ gap: 10 }}>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <h3 style={{ fontSize: 'var(--text-h3)' }}>{item.name}</h3>
+          <strong>{formatNZD(item.price_cents)}</strong>
+        </div>
+        {item.description ? (
+          <p className="muted" style={{ margin: 0, fontSize: 'var(--text-label)' }}>
+            {item.description}
+          </p>
+        ) : null}
+        {item.tags.length > 0 ? (
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+            {item.tags.map((t) => (
+              <TagBadge key={t} tag={t} />
+            ))}
+          </div>
+        ) : null}
+        {soldOut ? (
+          <button className="btn btn-outline btn-block" disabled aria-disabled="true">
+            Sold out
+          </button>
+        ) : (
+          <button className="btn btn-action btn-block" onClick={() => onOpen(item)}>
+            <Plus size={18} aria-hidden="true" /> Add to cart
+          </button>
+        )}
+      </div>
+    </article>
+  );
+}

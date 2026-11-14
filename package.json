@@ -1,0 +1,37 @@
+{
+  "name": "darjeeling-momo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Digital ordering platform for Darjeeling Momo — mobile-first web + React Native app, backed by Supabase and Stripe.",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20.10.0",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "setup:local": "node scripts/setup-local.mjs",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "turbo run dev --filter=@darjeeling/web",
+    "dev:mobile": "turbo run dev --filter=@darjeeling/mobile",
+    "supabase": "supabase",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset",
+    "supabase:functions": "supabase functions serve --no-verify-jwt --env-file supabase/functions/.env",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e --filter=@darjeeling/web",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "copy:brand": "node scripts/copy-brand.mjs",
+    "env:local": "node scripts/write-local-env.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.4.2",
+    "supabase": "^2.2.1",
+    "turbo": "^2.11.11",
+    "typescript": "^5.9.2"
+  }
+}

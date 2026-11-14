@@ -1,0 +1,15 @@
+{
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "singleQuote": true,
+    "lineWidth": 100
+  },
+  "imports": {
+    "stripe": "https://esm.sh/stripe@23.1.0?target=deno",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.58.0"
+  }
+}
