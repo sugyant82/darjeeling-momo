@@ -5,7 +5,7 @@ import type { MenuItem } from '@darjeeling/shared/types';
 import { useMenu } from '@/hooks/queries';
 import { MenuCard } from '@/components/menu-card';
 import { ItemSheet } from '@/components/item-sheet';
-import { EmptyState, ErrorState, SkeletonCard } from '@/components/ui';
+import { EmptyState, ErrorState, PageHeading, SkeletonCard } from '@/components/ui';
 
 export default function MenuPage() {
   const { data: menu, isLoading, isError, refetch } = useMenu();
@@ -13,10 +13,9 @@ export default function MenuPage() {
 
   return (
     <div className="container stack" style={{ gap: 28 }}>
-      <h1>Menu</h1>
-      <p className="muted" style={{ marginTop: -12 }}>
-        Sample menu — prices are GST-inclusive.
-      </p>
+      <PageHeading kicker={<span lang="mi">Rārangi kai</span>} title="Menu">
+        <p className="muted">Sample menu — prices are GST-inclusive.</p>
+      </PageHeading>
 
       {isLoading ? (
         <div className="menu-grid">
@@ -35,8 +34,8 @@ export default function MenuPage() {
             <section key={category.id} className="stack">
               <h2>{category.name}</h2>
               <div className="menu-grid">
-                {category.items.map((item) => (
-                  <MenuCard key={item.id} item={item} onOpen={setActive} />
+                {category.items.map((item, i) => (
+                  <MenuCard key={item.id} item={item} onOpen={setActive} index={i} />
                 ))}
               </div>
             </section>

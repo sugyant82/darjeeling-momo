@@ -54,7 +54,9 @@ export default function OrderPage() {
   return (
     <div className="container stack" style={{ gap: 24 }}>
       <div className="card card-pad stack">
-        <span className="muted">Order</span>
+        <span className="kicker">
+          <span lang="mi">Ngā mihi</span> · thanks for your order
+        </span>
         <h1 style={{ fontSize: 36 }}>{order.number}</h1>
         <StatusBadge status={current} />
         {!paid ? (

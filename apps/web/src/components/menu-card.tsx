@@ -1,30 +1,38 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { Plus } from 'lucide-react';
 import { formatNZD } from '@darjeeling/shared';
 import type { MenuItem } from '@darjeeling/shared/types';
 import { TagBadge } from './ui';
 
-export function MenuCard({ item, onOpen }: { item: MenuItem; onOpen: (item: MenuItem) => void }) {
+export function MenuCard({
+  item,
+  onOpen,
+  index = 0,
+}: {
+  item: MenuItem;
+  onOpen: (item: MenuItem) => void;
+  /** Position in its grid, used to stagger the entrance animation. */
+  index?: number;
+}) {
   const soldOut = !item.is_available;
   return (
-    <article className={`card ${soldOut ? 'sold-out' : ''}`}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={item.image_url ?? '/images/placeholder-momo.svg'}
-        alt=""
-        width={400}
-        height={220}
-        loading="lazy"
-        style={{
-          width: '100%',
-          height: 180,
-          objectFit: 'cover',
-          borderTopLeftRadius: 'var(--radius-card)',
-          borderTopRightRadius: 'var(--radius-card)',
-        }}
-      />
-      <div className="card-pad stack" style={{ gap: 10 }}>
+    <article
+      className={`card menu-card${soldOut ? ' sold-out' : ''}`}
+      style={{ '--i': Math.min(index, 8) } as CSSProperties}
+    >
+      <div className="menu-card-media">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={item.image_url ?? '/images/placeholder-momo.svg'}
+          alt=""
+          width={400}
+          height={220}
+          loading="lazy"
+        />
+      </div>
+      <div className="card-pad stack" style={{ gap: 10, flex: 1 }}>
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <h3 style={{ fontSize: 'var(--text-h3)' }}>{item.name}</h3>
           <strong>{formatNZD(item.price_cents)}</strong>
@@ -41,6 +49,7 @@ export function MenuCard({ item, onOpen }: { item: MenuItem; onOpen: (item: Menu
             ))}
           </div>
         ) : null}
+        <div className="spacer" />
         {soldOut ? (
           <button className="btn btn-outline btn-block" disabled aria-disabled="true">
             Sold out

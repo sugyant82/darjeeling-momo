@@ -15,7 +15,7 @@ import { getBrowserSupabase } from '@/lib/supabase/client';
 import { useAuth } from '@/components/auth-context';
 import { useOrderHistory } from '@/hooks/queries';
 import { SignIn } from '@/components/sign-in';
-import { Spinner, EmptyState } from '@/components/ui';
+import { Spinner, EmptyState, PageHeading } from '@/components/ui';
 import { useToast } from '@/components/toast-context';
 
 export default function AccountPage() {
@@ -98,7 +98,7 @@ function Account({ userId, email }: { userId: string; email: string }) {
 
   return (
     <div className="container stack" style={{ gap: 24 }}>
-      <h1>Your account</h1>
+      <PageHeading kicker={<span lang="mi">Kia ora</span>} title="Your account" />
 
       <section className="card card-pad stack">
         <h2>Profile</h2>

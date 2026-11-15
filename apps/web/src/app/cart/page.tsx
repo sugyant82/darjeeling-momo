@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { formatNZD } from '@darjeeling/shared';
 import { useCart } from '@/components/cart-context';
-import { EmptyState } from '@/components/ui';
+import { EmptyState, PageHeading } from '@/components/ui';
 
 export default function CartPage() {
   const { lines, totals, updateQuantity, removeItem, loading } = useCart();
@@ -27,7 +27,14 @@ export default function CartPage() {
 
   return (
     <div className="container stack" style={{ gap: 24 }}>
-      <h1>Your cart</h1>
+      <PageHeading
+        kicker={
+          <>
+            <span lang="mi">Tō kete</span> · your basket
+          </>
+        }
+        title="Your cart"
+      />
 
       <div className="stack">
         {lines.map((line) => (

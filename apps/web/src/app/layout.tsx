@@ -9,19 +9,21 @@ import {
 import { Providers } from '@/components/providers';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
+import { SPLASH_SCRIPT } from '@/lib/splash';
 import './globals.css';
 
 // Safety guard: refuse to start a production build with placeholders.
 assertProductionSafe(resolveIntegrations(process.env as Record<string, string | undefined>));
 
+// latin-ext carries the macron vowels (ā ē ī ō ū) used in te reo Māori.
 const baloo = Baloo_2({
-  subsets: ['latin'],
+  subsets: ['latin', 'latin-ext'],
   weight: ['500', '700', '800'],
   variable: '--font-baloo',
   display: 'swap',
 });
 const inter = Inter({
-  subsets: ['latin'],
+  subsets: ['latin', 'latin-ext'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-inter',
   display: 'swap',
@@ -55,7 +57,17 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-NZ" className={`${baloo.variable} ${inter.variable}`}>
+    // suppressHydrationWarning: SPLASH_SCRIPT sets data-splash on <html> before hydration.
+    // data-scroll-behavior lets Next skip smooth scrolling during route changes.
+    <html
+      lang="en-NZ"
+      className={`${baloo.variable} ${inter.variable}`}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: SPLASH_SCRIPT }} />
+      </head>
       <body>
         <Providers>
           <div className="page">
