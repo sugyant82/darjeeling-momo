@@ -13,6 +13,25 @@ export function FlagStripe() {
   );
 }
 
+/** Page title with an optional small kicker line above it (used for te reo Māori labels). */
+export function PageHeading({
+  kicker,
+  title,
+  children,
+}: {
+  kicker?: ReactNode;
+  title: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="page-head">
+      {kicker ? <p className="kicker">{kicker}</p> : null}
+      <h1>{title}</h1>
+      {children}
+    </div>
+  );
+}
+
 export function TagBadge({ tag }: { tag: Tag | string }) {
   const label = tag === 'veg' ? 'Veg' : tag === 'spicy' ? 'Spicy' : 'Bestseller';
   return <span className={`tag tag-${tag}`}>{label}</span>;

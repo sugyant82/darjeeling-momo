@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { Minus, Plus, X } from 'lucide-react';
 import { formatNZD, unitPriceCents } from '@darjeeling/shared';
 import type { ItemOption, MenuItem, SelectedOption } from '@darjeeling/shared/types';
@@ -24,6 +24,25 @@ export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => vo
   const [selection, setSelection] = useState<Selection>(() => defaultSelection(item.options));
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
+  // Closing plays the exit animation first; the parent unmounts the sheet once it finishes.
+  const [closing, setClosing] = useState(false);
+  const finishClose = useEffectEvent(() => onClose());
+
+  useEffect(() => {
+    if (!closing) return;
+    // Matches the .is-closing animation length in globals.css (a timer, not animationend,
+    // so the sheet still closes when animations are disabled).
+    const t = setTimeout(finishClose, 240);
+    return () => clearTimeout(t);
+  }, [closing]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setClosing(true);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const selectedOptions = useMemo<SelectedOption[]>(() => {
     const out: SelectedOption[] = [];
@@ -70,8 +89,8 @@ export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => vo
     setAdding(true);
     try {
       await cart.addItem(item, selectedOptions, quantity);
-      toast.show(`${quantity} × ${item.name} added`, 'success');
-      onClose();
+      toast.show(`Ka pai! ${quantity} × ${item.name} added`, 'success');
+      setClosing(true);
     } catch {
       toast.show('Could not add to cart. Please try again.', 'error');
     } finally {
@@ -81,16 +100,16 @@ export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => vo
 
   return (
     <div
-      className="sheet-backdrop"
+      className={`sheet-backdrop${closing ? ' is-closing' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={`${item.name} options`}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => e.target === e.currentTarget && setClosing(true)}
     >
       <div className="sheet stack">
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <h2>{item.name}</h2>
-          <button className="btn btn-ghost" aria-label="Close" onClick={onClose}>
+          <button className="btn btn-ghost" aria-label="Close" onClick={() => setClosing(true)}>
             <X aria-hidden="true" />
           </button>
         </div>
@@ -110,7 +129,7 @@ export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => vo
               return (
                 <label
                   key={choice.id}
-                  className="row card card-pad"
+                  className="row card card-pad choice"
                   style={{ padding: 12, cursor: 'pointer', gap: 10 }}
                 >
                   <input

@@ -6,10 +6,10 @@ import { storeLinks } from '@darjeeling/shared';
 
 const DISMISS_KEY = 'dm_app_banner_dismissed';
 
-export function StoreButtons() {
+export function StoreButtons({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
   const comingSoon = !storeLinks.appsLive;
   return (
-    <div className="store-buttons">
+    <div className={`store-buttons${tone === 'dark' ? ' store-buttons-dark' : ''}`}>
       <a
         className="btn btn-outline"
         href={storeLinks.ios}
