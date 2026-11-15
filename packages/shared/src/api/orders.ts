@@ -21,7 +21,7 @@ export async function createPayment(
 ): Promise<CreatePaymentResponse> {
   const payload = createOrderInputSchema.parse(input);
   const { data, error } = await supabase.functions.invoke('create-payment', { body: payload });
-  if (error) throw error;
+  if (error) throw await functionError(error, 'Could not start checkout. Please try again.');
   return createPaymentResponseSchema.parse(data);
 }
 
@@ -34,8 +34,34 @@ export async function confirmMockPayment(
   const { data, error } = await supabase.functions.invoke('confirm-mock-payment', {
     body: { orderId, decision },
   });
-  if (error) throw error;
+  if (error) throw await functionError(error, 'Payment could not be processed. Please try again.');
   return data as { status: OrderStatus; paid: boolean };
+}
+
+/** An Edge Function failure with the server's own message (e.g. "X is sold out"). */
+export type FunctionError = Error & { soldOut?: boolean };
+
+/**
+ * supabase-js reports any non-2xx response as "Edge Function returned a non-2xx status code";
+ * the useful message is in the response body. Network failures get a plain-language message.
+ */
+async function functionError(error: unknown, fallback: string): Promise<FunctionError> {
+  const name = (error as { name?: string } | null)?.name;
+  if (name === 'FunctionsFetchError') {
+    return new Error("Couldn't reach the server. Check your connection and try again.");
+  }
+  const context = (error as { context?: unknown } | null)?.context;
+  if (context && typeof (context as Response).json === 'function') {
+    try {
+      const body = (await (context as Response).clone().json()) as { error?: unknown; soldOut?: unknown };
+      if (typeof body?.error === 'string' && body.error.trim()) {
+        return Object.assign(new Error(body.error), { soldOut: body.soldOut === true });
+      }
+    } catch {
+      /* body was not JSON */
+    }
+  }
+  return new Error(fallback);
 }
 
 export async function fetchOrder(
@@ -95,21 +121,25 @@ export type OrderChangeHandler = (order: OrderRow) => void;
 
 /**
  * Subscribe to realtime changes for a single order (customer tracking).
- * Returns an unsubscribe function.
+ * Returns an unsubscribe function. `onStatus` receives channel states ("SUBSCRIBED",
+ * "CHANNEL_ERROR", …) so callers can refetch after (re)connecting.
  */
 export function subscribeToOrder(
   supabase: DarjeelingSupabaseClient,
   orderId: string,
   onChange: OrderChangeHandler,
+  onStatus?: (status: string) => void,
 ): () => void {
+  // A unique name per subscription: realtime-js reuses channels by name, so re-opening the same
+  // order while the previous channel is still closing would otherwise get no updates (or throw).
   const channel = supabase
-    .channel(`order:${orderId}`)
+    .channel(`order:${orderId}:${Math.random().toString(36).slice(2, 10)}`)
     .on(
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
       (payload) => onChange(payload.new as OrderRow),
     )
-    .subscribe();
+    .subscribe((status) => onStatus?.(status));
   return () => {
     void supabase.removeChannel(channel);
   };

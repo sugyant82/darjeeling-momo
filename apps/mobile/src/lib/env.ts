@@ -1,4 +1,10 @@
-import { DEV_PASSWORD, appName as resolveAppName, resolveIntegrations } from '@darjeeling/shared';
+import {
+  DEV_PASSWORD,
+  DEV_USERS,
+  appName as resolveAppName,
+  assertProductionSafe,
+  resolveIntegrations,
+} from '@darjeeling/shared';
 
 // EXPO_PUBLIC_* are statically inlined by the Expo bundler.
 export const publicEnv = {
@@ -23,6 +29,12 @@ export const devPassword = publicEnv.EXPO_PUBLIC_DEV_PASSWORD || DEV_PASSWORD;
 
 export const appName = resolveAppName(publicEnv as Record<string, string | undefined>);
 export const integrations = resolveIntegrations(publicEnv as Record<string, string | undefined>);
+
+// Same safety guard as the website: a production build refuses to run with mock payments / dev sign-in.
+assertProductionSafe(integrations);
+
+/** The app has no staff screens, so dev sign-in only offers the customer account. */
+export const MOBILE_DEV_USERS = DEV_USERS.filter((u) => u.role === 'customer');
 
 /** Resolve a (possibly relative) menu image URL to something fetchable on device. */
 export function resolveImageUrl(url: string | null | undefined): string {

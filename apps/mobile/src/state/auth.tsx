@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import type { Session, User } from '@supabase/supabase-js';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { fetchProfile } from '@darjeeling/shared';
 import type { ProfileRow, UserRole } from '@darjeeling/shared/types';
 import { supabase } from '@/lib/supabase';
@@ -21,28 +21,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
 
-  const loadProfile = async (u: User | null) => {
+  const loadProfile = useCallback(async (u: User | null) => {
     if (!u) return setProfile(null);
     try {
       setProfile(await fetchProfile(supabase, u.id));
     } catch {
       setProfile(null);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }: { data: { session: Session | null } }) => {
-      setUser(data.session?.user ?? null);
-      await loadProfile(data.session?.user ?? null);
+    let mounted = true;
+    supabase.auth
+      .getSession()
+      .then(async ({ data }) => {
+        if (!mounted) return;
+        setUser(data.session?.user ?? null);
+        await loadProfile(data.session?.user ?? null);
+      })
+      .catch(() => {})
+      .finally(() => mounted && setLoading(false));
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      const next = session?.user ?? null;
+      // Token refreshes (about hourly) hand over a new user object for the same person. Keep the
+      // existing one so screens don't reset what the user is typing or reload their cart.
+      setUser((prev) => (prev?.id === next?.id && event !== 'USER_UPDATED' ? prev : next));
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        void loadProfile(next);
+      }
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
-      setUser(session?.user ?? null);
-      await loadProfile(session?.user ?? null);
-      setLoading(false);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [loadProfile]);
 
   const value = useMemo<AuthState>(() => {
     const role = (profile?.role ?? 'customer') as UserRole;
@@ -53,11 +67,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role,
       isStaff: role === 'staff' || role === 'admin',
       refreshProfile: () => loadProfile(user),
+      // "local" clears this device's session even when offline (the default scope needs the network).
       signOut: async () => {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'local' });
       },
     };
-  }, [loading, user, profile]);
+  }, [loading, user, profile, loadProfile]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -1,55 +1,65 @@
-import { Image, Text, View, type DimensionValue } from 'react-native';
+import { View, type DimensionValue } from 'react-native';
+import { Image } from 'expo-image';
 import { colors, radii } from '@/lib/theme';
 import { resolveImageUrl } from '@/lib/env';
+import { LogoMark } from './brand';
 
 /**
- * Renders a menu photo. React Native's <Image> can't render SVGs, and the SAMPLE
- * seed uses .svg placeholders, so we show a styled placeholder for those (and for
- * missing images). Real uploaded photos (png/jpg/webp from Supabase Storage) render.
+ * A menu photo with caching and a soft fade-in (expo-image). React Native can't render SVG
+ * images and the SAMPLE seed uses .svg placeholders, so those (and missing images) get a
+ * branded placeholder instead.
  */
 export function FoodImage({
   url,
   size,
   radius = radii.md,
-  label,
 }: {
   url: string | null | undefined;
   size: number | { width: DimensionValue; height: number };
   radius?: number;
-  label?: string;
 }) {
   const resolved = resolveImageUrl(url);
-  const isRenderable = resolved.startsWith('http') && !resolved.endsWith('.svg');
-  const dims =
-    typeof size === 'number' ? { width: size, height: size } : { width: size.width, height: size.height };
-
-  if (isRenderable) {
-    return (
-      <Image
-        source={{ uri: resolved }}
-        style={{ ...dims, borderRadius: radius, backgroundColor: colors.cream }}
-        accessibilityIgnoresInvertColors
-      />
-    );
-  }
+  const isRenderable = resolved.startsWith('http') && !resolved.toLowerCase().endsWith('.svg');
+  const dims = typeof size === 'number' ? { width: size, height: size } : size;
+  const markHeight = Math.min(dims.height * 0.5, 72);
 
   return (
     <View
-      style={{
-        ...dims,
-        borderRadius: radius,
-        backgroundColor: colors.cream,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      style={{ ...dims, borderRadius: radius, overflow: 'hidden', backgroundColor: '#F3ECDC' }}
       accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
     >
-      <View style={{ width: '40%', aspectRatio: 1, borderRadius: 999, backgroundColor: colors.marigold }} />
-      {label ? (
-        <Text style={{ marginTop: 4, color: colors.muted, fontFamily: 'Inter_600SemiBold', fontSize: 11 }}>
-          {label}
-        </Text>
-      ) : null}
+      {isRenderable ? (
+        <Image
+          source={{ uri: resolved }}
+          style={{ width: '100%', height: '100%' }}
+          contentFit="cover"
+          transition={250}
+          cachePolicy="memory-disk"
+          recyclingKey={resolved}
+        />
+      ) : (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F6EEDD' }}>
+          <View style={{ opacity: 0.9 }}>
+            <LogoMark variant="light" height={markHeight} />
+          </View>
+          <View
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 4,
+              flexDirection: 'row',
+              opacity: 0.85,
+            }}
+          >
+            {[colors.indigo, colors.cream, colors.achar, colors.tealeaf, colors.marigold].map((c, i) => (
+              <View key={i} style={{ flex: 1, backgroundColor: c }} />
+            ))}
+          </View>
+        </View>
+      )}
     </View>
   );
 }

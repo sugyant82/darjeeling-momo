@@ -52,12 +52,26 @@ export async function fetchMenuItem(
   if (error) throw error;
   if (!item) return null;
 
-  const [{ data: options }, { data: choices }] = await Promise.all([
-    supabase.from('item_options').select('*').eq('menu_item_id', itemId).order('sort'),
-    supabase.from('option_choices').select('*').order('sort'),
-  ]);
+  // Fail loudly: an item shown without its (possibly required) options would let invalid lines through.
+  const { data: options, error: optErr } = await supabase
+    .from('item_options')
+    .select('*')
+    .eq('menu_item_id', itemId)
+    .order('sort');
+  if (optErr) throw optErr;
+  const optionIds = (options ?? []).map((o) => o.id);
+  let choices: OptionChoiceRow[] = [];
+  if (optionIds.length > 0) {
+    const { data, error: choiceErr } = await supabase
+      .from('option_choices')
+      .select('*')
+      .in('item_option_id', optionIds)
+      .order('sort');
+    if (choiceErr) throw choiceErr;
+    choices = (data ?? []) as OptionChoiceRow[];
+  }
 
-  const choicesByOption = groupBy((choices ?? []) as OptionChoiceRow[], (c) => c.item_option_id);
+  const choicesByOption = groupBy(choices, (c) => c.item_option_id);
   const itemOptions = ((options ?? []) as ItemOptionRow[]).map((opt) => ({
     ...opt,
     choices: choicesByOption.get(opt.id) ?? [],
