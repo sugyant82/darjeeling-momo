@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import {
   CUSTOMER_STEPS,
-  PICKUP_TYPE_LABEL,
   STATUS_LABEL,
   formatNZD,
   formatSlotTime,
@@ -17,10 +16,12 @@ import {
 import type { OrderRow } from '@darjeeling/shared/types';
 import { getBrowserSupabase } from '@/lib/supabase/client';
 import { useOrder } from '@/hooks/queries';
+import { useT } from '@/lib/i18n';
 import { StatusBadge, Spinner, ErrorState } from '@/components/ui';
 import { useToast } from '@/components/toast-context';
 
 export default function OrderPage() {
+  const { t } = useT();
   const params = useParams<{ id: string }>();
   const orderId = params.id;
   const supabase = getBrowserSupabase();
@@ -33,17 +34,17 @@ export default function OrderPage() {
     const unsub = subscribeToOrder(supabase, orderId, (row: OrderRow) => {
       setStatus(row.status);
       if (row.status === 'ready') {
-        toast.show('🛎 Your order is ready for pickup!', 'success');
+        toast.show('🛎 ' + t('order.ready'), 'success');
       }
     });
     return unsub;
-  }, [orderId, supabase, toast]);
+  }, [orderId, supabase, toast, t]);
 
-  if (isLoading) return <Spinner label="Loading your order…" />;
+  if (isLoading) return <Spinner label={t('order.loading')} />;
   if (isError || !order) {
     return (
       <div className="container">
-        <ErrorState message="We couldn't find that order." onRetry={() => refetch()} />
+        <ErrorState message={t('order.notFound')} onRetry={() => refetch()} />
       </div>
     );
   }
@@ -56,22 +57,22 @@ export default function OrderPage() {
     <div className="container stack" style={{ gap: 24 }}>
       <div className="card card-pad stack">
         <span className="kicker">
-          <span lang="mi">Ngā mihi</span> · thanks for your order
+          <span>{t('greet.thanks')}</span> · {t('order.thanks')}
         </span>
         <h1 style={{ fontSize: 36 }}>{order.number}</h1>
         <StatusBadge status={current} />
         {!paid ? (
-          <div className="banner banner-warn">Awaiting payment confirmation…</div>
+          <div className="banner banner-warn">{t('order.awaitingPayment')}</div>
         ) : null}
       </div>
 
       {current === 'ready' ? (
         <div className="banner banner-success row">
-          <CheckCircle2 aria-hidden="true" /> Your order is ready for pickup!
+          <CheckCircle2 aria-hidden="true" /> {t('order.ready')}
         </div>
       ) : null}
       {current === 'cancelled' ? (
-        <div className="banner banner-error">This order was cancelled.</div>
+        <div className="banner banner-error">{t('order.cancelled')}</div>
       ) : null}
 
       {current !== 'cancelled' ? (
@@ -95,31 +96,31 @@ export default function OrderPage() {
       ) : null}
 
       <div className="card card-pad stack">
-        <h2>Pickup</h2>
+        <h2>{t('order.pickup')}</h2>
         {order.location ? (
           <div className="stack" style={{ gap: 2 }}>
             <strong>
-              {PICKUP_TYPE_LABEL[order.location.pickup_type]} · {order.location.place}
+              {t(order.location.pickup_type === 'home' ? 'pickup.home' : 'pickup.truck')} · {order.location.place}
             </strong>
             <span className="muted">{order.location.address}</span>
             {order.location.map_link ? (
               <a href={order.location.map_link} target="_blank" rel="noreferrer">
-                Open in maps
+                {t('order.openInMaps')}
               </a>
             ) : null}
           </div>
         ) : null}
         {order.pickup_slot ? (
-          <span>Ready around {formatSlotTime(order.pickup_slot)}</span>
+          <span>{t('order.readyAround', { time: formatSlotTime(order.pickup_slot) })}</span>
         ) : (
-          <span>ASAP</span>
+          <span>{t('order.asap')}</span>
         )}
-        {order.phone ? <span className="muted">Contact: {order.phone}</span> : null}
-        {order.notes ? <span className="muted">Notes: {order.notes}</span> : null}
+        {order.phone ? <span className="muted">{t('order.contact', { phone: order.phone })}</span> : null}
+        {order.notes ? <span className="muted">{t('order.notes', { notes: order.notes })}</span> : null}
       </div>
 
       <div className="card card-pad stack">
-        <h2>Items</h2>
+        <h2>{t('order.items')}</h2>
         {order.items.map((it) => (
           <div key={it.id} className="row" style={{ justifyContent: 'space-between' }}>
             <span>
@@ -133,17 +134,17 @@ export default function OrderPage() {
         ))}
         <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)' }} />
         <div className="row" style={{ justifyContent: 'space-between' }}>
-          <span className="muted">GST (15% incl.)</span>
+          <span className="muted">{t('cart.gst')}</span>
           <span>{formatNZD(order.gst_cents)}</span>
         </div>
         <div className="row" style={{ justifyContent: 'space-between', fontWeight: 800 }}>
-          <span>Total</span>
+          <span>{t('order.total')}</span>
           <span>{formatNZD(order.total_cents)}</span>
         </div>
       </div>
 
       <Link href="/menu" className="btn btn-outline btn-block">
-        Order again
+        {t('home.orderNow')}
       </Link>
     </div>
   );

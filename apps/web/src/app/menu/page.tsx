@@ -3,18 +3,20 @@
 import { useState } from 'react';
 import type { MenuItem } from '@darjeeling/shared/types';
 import { useMenu } from '@/hooks/queries';
+import { useT } from '@/lib/i18n';
 import { MenuCard } from '@/components/menu-card';
 import { ItemSheet } from '@/components/item-sheet';
 import { EmptyState, ErrorState, PageHeading, SkeletonCard } from '@/components/ui';
 
 export default function MenuPage() {
+  const { t } = useT();
   const { data: menu, isLoading, isError, refetch } = useMenu();
   const [active, setActive] = useState<MenuItem | null>(null);
 
   return (
     <div className="container stack" style={{ gap: 28 }}>
-      <PageHeading kicker={<span lang="mi">Rārangi kai</span>} title="Menu">
-        <p className="muted">Sample menu — prices are GST-inclusive.</p>
+      <PageHeading title={t('menu.title')}>
+        <p className="muted">{t('menu.sampleNote')}</p>
       </PageHeading>
 
       {isLoading ? (
@@ -24,9 +26,9 @@ export default function MenuPage() {
           ))}
         </div>
       ) : isError ? (
-        <ErrorState message="We couldn't load the menu." onRetry={() => refetch()} />
+        <ErrorState message={t('menu.loadError')} onRetry={() => refetch()} />
       ) : !menu || menu.length === 0 ? (
-        <EmptyState title="No items yet" message="The menu is being set up. Check back soon." />
+        <EmptyState title={t('menu.emptyTitle')} message={t('menu.emptyBody')} />
       ) : (
         menu
           .filter((c) => c.items.length > 0)

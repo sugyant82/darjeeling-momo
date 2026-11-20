@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { Plus } from 'lucide-react';
 import { formatNZD, isItemAvailable } from '@darjeeling/shared';
 import type { MenuItem } from '@darjeeling/shared/types';
+import { useT } from '@/lib/i18n';
 import { TagBadge } from './ui';
 
 export function MenuCard({
@@ -16,6 +17,7 @@ export function MenuCard({
   /** Position in its grid, used to stagger the entrance animation. */
   index?: number;
 }) {
+  const { t } = useT();
   const soldOut = !isItemAvailable(item);
   // Low-stock nudge for tracked items that are still available.
   const lowStock = item.stock_qty != null && item.stock_qty > 0 && item.stock_qty <= 5;
@@ -53,17 +55,17 @@ export function MenuCard({
         ) : null}
         {lowStock ? (
           <span className="tag tag-spicy" style={{ alignSelf: 'flex-start' }}>
-            Only {item.stock_qty} left
+            {t('card.onlyLeft', { n: item.stock_qty as number })}
           </span>
         ) : null}
         <div className="spacer" />
         {soldOut ? (
           <button className="btn btn-outline btn-block" disabled aria-disabled="true">
-            Sold out
+            {t('card.soldOut')}
           </button>
         ) : (
           <button className="btn btn-action btn-block" onClick={() => onOpen(item)}>
-            <Plus size={18} aria-hidden="true" /> Add to cart
+            <Plus size={18} aria-hidden="true" /> {t('card.addToCart')}
           </button>
         )}
       </div>

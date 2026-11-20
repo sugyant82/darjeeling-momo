@@ -4,14 +4,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ShoppingBag, User } from 'lucide-react';
 import { appName } from '@/lib/env';
+import { useT } from '@/lib/i18n';
 import { useCart } from './cart-context';
 import { useAuth } from './auth-context';
 import { BrandLockup } from './brand';
+import { LangThemeControls } from './lang-theme-controls';
 import { FlagStripe } from './ui';
 
 export function Header() {
   const { count } = useCart();
   const { user, isStaff } = useAuth();
+  const { t } = useT();
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
@@ -19,7 +22,8 @@ export function Header() {
     <header className="site-header">
       <div className="site-header-bar">
         <div className="container">
-          <Link href="/" className="header-brand" aria-label={`${appName} home`}>
+          <Link href="/" className="header-brand" aria-label={t('a11y.homeLink', { app: appName })}>
+            {/* The wordmark uses the cream-on-navy variant in both themes (the bar is always indigo). */}
             <BrandLockup variant="navy" compact />
           </Link>
           <div className="spacer" />
@@ -29,7 +33,7 @@ export function Header() {
               className={`nav-link${isActive('/menu') ? ' is-active' : ''}`}
               aria-current={isActive('/menu') ? 'page' : undefined}
             >
-              Menu
+              {t('nav.menu')}
             </Link>
             {isStaff ? (
               <Link
@@ -37,20 +41,20 @@ export function Header() {
                 className={`nav-link${isActive('/admin') ? ' is-active' : ''}`}
                 aria-current={isActive('/admin') ? 'page' : undefined}
               >
-                Admin
+                {t('nav.admin')}
               </Link>
             ) : null}
             <Link
               href="/account"
               className={`nav-icon${isActive('/account') ? ' is-active' : ''}`}
-              aria-label={user ? 'Your account' : 'Sign in'}
+              aria-label={user ? t('a11y.account') : t('a11y.signin')}
             >
               <User size={20} aria-hidden="true" />
             </Link>
             <Link
               href="/cart"
               className={`nav-icon${isActive('/cart') ? ' is-active' : ''}`}
-              aria-label={`Cart, ${count} item${count === 1 ? '' : 's'}`}
+              aria-label={t('a11y.cart', { count })}
             >
               <ShoppingBag size={20} aria-hidden="true" />
               {/* Keyed on count so the badge re-mounts and pops whenever the cart changes. */}
@@ -60,6 +64,7 @@ export function Header() {
                 </span>
               ) : null}
             </Link>
+            <LangThemeControls />
           </nav>
         </div>
       </div>

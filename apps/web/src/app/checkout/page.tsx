@@ -13,11 +13,11 @@ import {
   formatWait,
   isItemAvailable,
   orderPrepMinutes,
-  PICKUP_TYPE_LABEL,
   type CreatePaymentResponse,
   type PickupOption,
 } from '@darjeeling/shared';
 import { getBrowserSupabase } from '@/lib/supabase/client';
+import { useT } from '@/lib/i18n';
 import { useAuth } from '@/components/auth-context';
 import { useCart } from '@/components/cart-context';
 import { useMenu, usePickupOptions } from '@/hooks/queries';
@@ -44,6 +44,7 @@ export default function CheckoutPage() {
 }
 
 function CheckoutForm({ userId }: { userId: string }) {
+  const { t } = useT();
   const supabase = getBrowserSupabase();
   const router = useRouter();
   const toast = useToast();
@@ -106,11 +107,11 @@ function CheckoutForm({ userId }: { userId: string }) {
     return (
       <div className="container">
         <EmptyState
-          title="Nothing to check out"
-          message="Your cart is empty."
+          title={t('checkout.nothingTitle')}
+          message={t('checkout.nothingBody')}
           action={
             <Link href="/menu" className="btn btn-action">
-              Browse the menu
+              {t('cart.browseMenu')}
             </Link>
           }
         />
@@ -125,7 +126,7 @@ function CheckoutForm({ userId }: { userId: string }) {
         ? { pickupSlotIso: availableSlots[0]?.startIso ?? null, pickupAsap: true }
         : { pickupSlotIso: chosenSlot || null, pickupAsap: false };
     if (mode === 'scheduled' && !chosenSlot) {
-      toast.show('Please choose a pickup time.', 'error');
+      toast.show(t('checkout.chooseTimeError'), 'error');
       return;
     }
 
@@ -142,7 +143,7 @@ function CheckoutForm({ userId }: { userId: string }) {
       notes,
     });
     if (!parsed.success) {
-      toast.show(parsed.error.issues[0]?.message ?? 'Please check your details.', 'error');
+      toast.show(parsed.error.issues[0]?.message ?? t('checkout.checkDetails'), 'error');
       return;
     }
 
@@ -151,7 +152,7 @@ function CheckoutForm({ userId }: { userId: string }) {
       const res = await createPayment(supabase, parsed.data);
       setPayment(res);
     } catch (err) {
-      toast.show(err instanceof Error ? err.message : 'Could not start checkout.', 'error');
+      toast.show(err instanceof Error ? err.message : t('checkout.couldNotStart'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -168,23 +169,23 @@ function CheckoutForm({ userId }: { userId: string }) {
 
   return (
     <div className="container stack" style={{ gap: 24 }}>
-      <h1>Checkout</h1>
+      <h1>{t('checkout.title')}</h1>
 
       {stockProblem ? (
         <div className="banner banner-error">
-          Some items in your cart just sold out or ran low. Please adjust your cart.
+          {t('checkout.stockProblem')}
         </div>
       ) : null}
 
       {optionsLoading ? (
-        <Spinner label="Checking pickup times…" />
+        <Spinner label={t('checkout.checkingTimes')} />
       ) : noLocations ? (
-        <div className="banner banner-warn">No pickup is available today. Please check back soon.</div>
+        <div className="banner banner-warn">{t('checkout.noPickupToday')}</div>
       ) : (
         <>
           {/* Pickup location */}
           <section className="card card-pad stack">
-            <h2>Pickup</h2>
+            <h2>{t('checkout.pickup')}</h2>
             {options!.length > 1 ? (
               <div className="pickup-locations">
                 {options!.map((opt) => (
@@ -211,9 +212,7 @@ function CheckoutForm({ userId }: { userId: string }) {
 
             {selected && !selected.accepting ? (
               <div className="banner banner-warn">
-                {selected.open
-                  ? 'This kitchen has paused new orders right now. Please check back soon.'
-                  : 'This location is closed right now.'}
+                {selected.open ? t('checkout.paused') : t('checkout.locationClosed')}
               </div>
             ) : null}
 
@@ -232,9 +231,9 @@ function CheckoutForm({ userId }: { userId: string }) {
 
           {/* Contact */}
           <section className="card card-pad stack">
-            <h2>Contact</h2>
+            <h2>{t('checkout.contact')}</h2>
             <div className="field">
-              <label htmlFor="phone">Phone number</label>
+              <label htmlFor="phone">{t('checkout.phone')}</label>
               <input
                 id="phone"
                 className="input"
@@ -247,11 +246,11 @@ function CheckoutForm({ userId }: { userId: string }) {
               />
             </div>
             <div className="field">
-              <label htmlFor="notes">Order notes (optional)</label>
+              <label htmlFor="notes">{t('checkout.notes')}</label>
               <textarea
                 id="notes"
                 className="textarea"
-                placeholder="Allergies, extra achar on the side…"
+                placeholder={t('checkout.notesPlaceholder')}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 maxLength={500}
@@ -278,7 +277,7 @@ function CheckoutForm({ userId }: { userId: string }) {
               onClick={submit}
               disabled={!canOrder || submitting || !phone}
             >
-              {submitting ? 'Starting payment…' : `Pay ${formatNZD(cart.totals.totalCents)}`}
+              {submitting ? t('checkout.starting') : t('checkout.pay', { price: formatNZD(cart.totals.totalCents) })}
             </button>
           </section>
         </>
@@ -314,6 +313,7 @@ function LocationChoice({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const { t } = useT();
   const Icon = opt.schedule.pickup_type === 'home' ? Home : Truck;
   return (
     <button
@@ -324,10 +324,12 @@ function LocationChoice({
     >
       <span className="pickup-loc-head">
         <Icon size={18} aria-hidden="true" />
-        <span className="tag" style={{ background: 'var(--color-border)', color: 'var(--color-indigo)' }}>
-          {PICKUP_TYPE_LABEL[opt.schedule.pickup_type]}
+        <span className="tag" style={{ background: 'var(--color-border)', color: 'var(--text)' }}>
+          {t(opt.schedule.pickup_type === 'home' ? 'pickup.home' : 'pickup.truck')}
         </span>
-        {!opt.accepting ? <span className="muted">· {opt.open ? 'paused' : 'closed'}</span> : null}
+        {!opt.accepting ? (
+          <span className="muted">· {opt.open ? t('checkout.pausedShort') : t('checkout.closedShort')}</span>
+        ) : null}
       </span>
       <strong>{opt.schedule.place}</strong>
       <span className="muted" style={{ fontSize: 'var(--text-label)' }}>
@@ -354,6 +356,7 @@ function PickupWhen({
   setSlotIso: (s: string) => void;
   canOrder: boolean;
 }) {
+  const { t } = useT();
   const availableSlots = option.slots.filter((s) => !s.full);
   const earliest = availableSlots[0];
   const wait = formatWait(option.leadMinutes);
@@ -363,26 +366,16 @@ function PickupWhen({
       <div className="banner banner-info row" style={{ gap: 8 }}>
         <Clock size={18} aria-hidden="true" />
         <span>
-          {prepMinutes > 0 ? (
-            <>
-              Momos take <strong>{wait}</strong> to prepare right now.{' '}
-            </>
-          ) : null}
-          {earliest ? (
-            <>
-              Earliest pickup <strong>{earliest.label}</strong>.
-            </>
-          ) : (
-            'No pickup times left today.'
-          )}
+          {prepMinutes > 0 ? <>{t('checkout.prepNote', { wait })} </> : null}
+          {earliest ? t('checkout.earliest', { time: earliest.label }) : t('checkout.noTimesLeft')}
         </span>
       </div>
 
       {availableSlots.length === 0 ? (
-        <div className="banner banner-warn">No pickup times are available — please try again soon.</div>
+        <div className="banner banner-warn">{t('checkout.noTimes')}</div>
       ) : (
         <fieldset className="stack" style={{ border: 'none', padding: 0, margin: 0 }}>
-          <legend style={{ fontWeight: 700 }}>When</legend>
+          <legend style={{ fontWeight: 700 }}>{t('checkout.when')}</legend>
           <label className="row card card-pad" style={{ padding: 12, gap: 10 }}>
             <input
               type="radio"
@@ -392,7 +385,8 @@ function PickupWhen({
               disabled={!canOrder}
             />
             <span>
-              ASAP {earliest ? <span className="muted">(ready around {earliest.label})</span> : null}
+              {t('checkout.asap')}{' '}
+              {earliest ? <span className="muted">({t('checkout.readyAround', { time: earliest.label })})</span> : null}
             </span>
           </label>
           <label className="row card card-pad" style={{ padding: 12, gap: 10 }}>
@@ -403,17 +397,17 @@ function PickupWhen({
               onChange={() => setMode('scheduled')}
               disabled={!canOrder}
             />
-            <span>Schedule a time</span>
+            <span>{t('checkout.scheduleTime')}</span>
           </label>
           {mode === 'scheduled' ? (
             <div className="field">
-              <label htmlFor="slot">Pickup time</label>
+              <label htmlFor="slot">{t('checkout.pickupTime')}</label>
               <select id="slot" className="select" value={slotIso} onChange={(e) => setSlotIso(e.target.value)}>
-                <option value="">Choose a time…</option>
+                <option value="">{t('checkout.chooseTime')}</option>
                 {option.slots.map((s) => (
                   <option key={s.startIso} value={s.startIso} disabled={s.full}>
                     {formatSlotTime(s.startIso)}
-                    {s.full ? ' — full' : ''}
+                    {s.full ? ` — ${t('checkout.full')}` : ''}
                   </option>
                 ))}
               </select>

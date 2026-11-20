@@ -6,9 +6,11 @@ import { LogIn } from 'lucide-react';
 import { DEV_USERS, devSignIn, devMagicLink, signInWithGoogle } from '@darjeeling/shared';
 import { getBrowserSupabase } from '@/lib/supabase/client';
 import { devPassword, integrations } from '@/lib/env';
+import { useT } from '@/lib/i18n';
 import { useToast } from './toast-context';
 
 export function SignIn({ next = '/account' }: { next?: string }) {
+  const { t } = useT();
   const supabase = getBrowserSupabase();
   const router = useRouter();
   const params = useSearchParams();
@@ -26,7 +28,7 @@ export function SignIn({ next = '/account' }: { next?: string }) {
       try {
         await signInWithGoogle(supabase, redirectTo);
       } catch {
-        toast.show('Google sign-in failed.', 'error');
+        toast.show(t('signin.googleFailed'), 'error');
       }
     } else {
       setShowDev(true);
@@ -37,11 +39,11 @@ export function SignIn({ next = '/account' }: { next?: string }) {
     setBusy(true);
     try {
       await devSignIn(supabase, userEmail, devPassword);
-      toast.show('Signed in (dev).', 'success');
+      toast.show(t('greet.kiaora'), 'success');
       router.push(target);
       router.refresh();
     } catch {
-      toast.show('Dev sign-in failed. Did the seed run?', 'error');
+      toast.show(t('signin.devFailed'), 'error');
     } finally {
       setBusy(false);
     }
@@ -52,9 +54,9 @@ export function SignIn({ next = '/account' }: { next?: string }) {
     setBusy(true);
     try {
       await devMagicLink(supabase, email, `${window.location.origin}/auth/callback`);
-      toast.show('Magic link sent — open the local mailbox at :54324.', 'success');
+      toast.show(t('signin.magicSent'), 'success');
     } catch {
-      toast.show('Could not send magic link.', 'error');
+      toast.show(t('signin.magicFailed'), 'error');
     } finally {
       setBusy(false);
     }
@@ -62,11 +64,11 @@ export function SignIn({ next = '/account' }: { next?: string }) {
 
   return (
     <div className="card card-pad stack" style={{ maxWidth: 440, margin: '0 auto' }}>
-      <h1>Sign in</h1>
-      <p className="muted">Browse freely — you only need to sign in to place an order.</p>
+      <h1>{t('signin.title')}</h1>
+      <p className="muted">{t('signin.subtitle')}</p>
 
       <button className="btn btn-primary btn-lg btn-block" onClick={handleGoogle} disabled={busy}>
-        <LogIn size={18} aria-hidden="true" /> Continue with Google
+        <LogIn size={18} aria-hidden="true" /> {t('signin.google')}
       </button>
 
       {!googleReal && showDev ? (
@@ -83,12 +85,12 @@ export function SignIn({ next = '/account' }: { next?: string }) {
                 onClick={() => handleDevUser(u.email)}
                 disabled={busy}
               >
-                Sign in as {u.label}
+                {t('signin.signInAs', { label: u.label })}
               </button>
             ))}
           </div>
           <div className="field">
-            <label htmlFor="magic-email">Or get a magic link</label>
+            <label htmlFor="magic-email">{t('signin.orMagic')}</label>
             <input
               id="magic-email"
               className="input"
@@ -99,7 +101,7 @@ export function SignIn({ next = '/account' }: { next?: string }) {
             />
           </div>
           <button className="btn btn-action btn-block" onClick={handleMagicLink} disabled={busy || !email}>
-            Send magic link
+            {t('signin.sendMagic')}
           </button>
           <small className="muted">
             Magic links appear in the local mailbox at http://localhost:54324

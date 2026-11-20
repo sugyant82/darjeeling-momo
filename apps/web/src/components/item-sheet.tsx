@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { Minus, Plus, X } from 'lucide-react';
 import { formatNZD, unitPriceCents } from '@darjeeling/shared';
 import type { ItemOption, MenuItem, SelectedOption } from '@darjeeling/shared/types';
+import { useT } from '@/lib/i18n';
 import { useCart } from './cart-context';
 import { useToast } from './toast-context';
 
@@ -19,6 +20,7 @@ function defaultSelection(options: ItemOption[]): Selection {
 }
 
 export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => void }) {
+  const { t } = useT();
   const cart = useCart();
   const toast = useToast();
   const [selection, setSelection] = useState<Selection>(() => defaultSelection(item.options));
@@ -89,10 +91,10 @@ export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => vo
     setAdding(true);
     try {
       await cart.addItem(item, selectedOptions, quantity);
-      toast.show(`Ka pai! ${quantity} × ${item.name} added`, 'success');
+      toast.show(t('sheet.added', { n: quantity, name: item.name }), 'success');
       setClosing(true);
     } catch {
-      toast.show('Could not add to cart. Please try again.', 'error');
+      toast.show(t('sheet.addError'), 'error');
     } finally {
       setAdding(false);
     }
@@ -109,7 +111,7 @@ export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => vo
       <div className="sheet stack">
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <h2>{item.name}</h2>
-          <button className="btn btn-ghost" aria-label="Close" onClick={() => setClosing(true)}>
+          <button className="btn btn-ghost" aria-label={t('sheet.close')} onClick={() => setClosing(true)}>
             <X aria-hidden="true" />
           </button>
         </div>
@@ -119,9 +121,9 @@ export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => vo
           <fieldset key={opt.id} className="stack" style={{ border: 'none', padding: 0, margin: 0 }}>
             <legend style={{ fontWeight: 700 }}>
               {opt.name}
-              {opt.required ? <span className="muted"> · required</span> : null}
+              {opt.required ? <span className="muted"> · {t('sheet.required')}</span> : null}
               {opt.max_select > 1 ? (
-                <span className="muted"> · choose up to {opt.max_select}</span>
+                <span className="muted"> · {t('sheet.chooseUpTo', { n: opt.max_select })}</span>
               ) : null}
             </legend>
             {opt.choices.map((choice) => {
@@ -152,11 +154,11 @@ export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => vo
         ))}
 
         <div className="row" style={{ justifyContent: 'space-between' }}>
-          <span style={{ fontWeight: 700 }}>Quantity</span>
+          <span style={{ fontWeight: 700 }}>{t('sheet.quantity')}</span>
           <div className="row" style={{ gap: 12 }}>
             <button
               className="btn btn-outline"
-              aria-label="Decrease quantity"
+              aria-label={t('sheet.decrease')}
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
             >
               <Minus size={18} aria-hidden="true" />
@@ -166,7 +168,7 @@ export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => vo
             </strong>
             <button
               className="btn btn-outline"
-              aria-label="Increase quantity"
+              aria-label={t('sheet.increase')}
               onClick={() => setQuantity((q) => Math.min(50, q + 1))}
             >
               <Plus size={18} aria-hidden="true" />
@@ -175,7 +177,7 @@ export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => vo
         </div>
 
         {missingRequired.length > 0 ? (
-          <p className="muted">Please choose: {missingRequired.map((o) => o.name).join(', ')}</p>
+          <p className="muted">{t('sheet.pleaseChoose', { names: missingRequired.map((o) => o.name).join(', ') })}</p>
         ) : null}
 
         <button
@@ -183,7 +185,7 @@ export function ItemSheet({ item, onClose }: { item: MenuItem; onClose: () => vo
           onClick={add}
           disabled={missingRequired.length > 0 || adding}
         >
-          {adding ? 'Adding…' : `Add ${quantity} · ${formatNZD(unit * quantity)}`}
+          {adding ? t('sheet.adding') : t('sheet.add', { n: quantity, price: formatNZD(unit * quantity) })}
         </button>
       </div>
     </div>

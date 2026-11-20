@@ -12,6 +12,7 @@ import {
   updateProfile,
 } from '@darjeeling/shared';
 import { getBrowserSupabase } from '@/lib/supabase/client';
+import { useT } from '@/lib/i18n';
 import { useAuth } from '@/components/auth-context';
 import { useOrderHistory } from '@/hooks/queries';
 import { SignIn } from '@/components/sign-in';
@@ -34,6 +35,7 @@ export default function AccountPage() {
 }
 
 function Account({ userId, email }: { userId: string; email: string }) {
+  const { t } = useT();
   const supabase = getBrowserSupabase();
   const router = useRouter();
   const toast = useToast();
@@ -58,9 +60,9 @@ function Account({ userId, email }: { userId: string; email: string }) {
     try {
       await updateProfile(supabase, userId, { name, phone });
       await refreshProfile();
-      toast.show('Profile saved.', 'success');
+      toast.show(t('account.saved'), 'success');
     } catch {
-      toast.show('Could not save profile.', 'error');
+      toast.show(t('account.saveError'), 'error');
     } finally {
       setSaving(false);
     }
@@ -78,10 +80,10 @@ function Account({ userId, email }: { userId: string; email: string }) {
           selectedOptions: it.selected_options,
         });
       }
-      toast.show('Added to cart.', 'success');
+      toast.show(t('account.reordered'), 'success');
       router.push('/cart');
     } catch {
-      toast.show('Could not reorder (some items may be unavailable).', 'error');
+      toast.show(t('account.reorderError'), 'error');
     }
   }
 
@@ -89,46 +91,46 @@ function Account({ userId, email }: { userId: string; email: string }) {
     if (!window.confirm('Delete your account and all your data? This cannot be undone.')) return;
     try {
       await deleteAccount(supabase);
-      toast.show('Account deleted.', 'success');
+      toast.show(t('account.deleted'), 'success');
       router.push('/');
     } catch {
-      toast.show('Could not delete account.', 'error');
+      toast.show(t('account.deleteError'), 'error');
     }
   }
 
   return (
     <div className="container stack" style={{ gap: 24 }}>
-      <PageHeading kicker={<span lang="mi">Kia ora</span>} title="Your account" />
+      <PageHeading kicker={t('greet.kiaora')} title={t('account.title')} />
 
       <section className="card card-pad stack">
-        <h2>Profile</h2>
+        <h2>{t('account.profile')}</h2>
         <div className="field">
-          <label htmlFor="name">Name</label>
+          <label htmlFor="name">{t('account.name')}</label>
           <input id="name" className="input" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="field">
-          <label htmlFor="email">Email</label>
+          <label htmlFor="email">{t('account.email')}</label>
           <input id="email" className="input" value={email} disabled />
         </div>
         <div className="field">
-          <label htmlFor="phone">Phone</label>
+          <label htmlFor="phone">{t('account.phone')}</label>
           <input id="phone" className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
         <button className="btn btn-primary" onClick={save} disabled={saving}>
-          {saving ? 'Saving…' : 'Save profile'}
+          {saving ? t('account.saving') : t('account.save')}
         </button>
       </section>
 
       <section className="stack">
-        <h2>Order history</h2>
+        <h2>{t('account.history')}</h2>
         {isLoading ? (
           <Spinner />
         ) : !orders || orders.length === 0 ? (
           <EmptyState
-            title="No orders yet"
+            title={t('account.noOrders')}
             action={
               <Link href="/menu" className="btn btn-action">
-                Browse the menu
+                {t('cart.browseMenu')}
               </Link>
             }
           />
@@ -140,18 +142,18 @@ function Account({ userId, email }: { userId: string; email: string }) {
                   <strong>{o.number}</strong>
                 </Link>
                 <div className="muted">
-                  {STATUS_LABEL[o.status]} · {o.item_count} item{o.item_count === 1 ? '' : 's'} ·{' '}
+                  {STATUS_LABEL[o.status]} · {t('account.itemsCount', { n: o.item_count })} ·{' '}
                   {formatNZD(o.total_cents)}
                 </div>
               </div>
               <button className="btn btn-outline" onClick={() => reorder(o.id)}>
-                Reorder
+                {t('account.reorder')}
               </button>
             </div>
           ))
         )}
         <button className="btn btn-ghost" onClick={() => refetch()}>
-          Refresh
+          {t('account.refresh')}
         </button>
       </section>
 
@@ -163,10 +165,10 @@ function Account({ userId, email }: { userId: string; email: string }) {
             router.push('/');
           }}
         >
-          Sign out
+          {t('account.signOut')}
         </button>
         <button className="btn btn-danger btn-block" onClick={onDelete}>
-          Delete account
+          {t('account.deleteAccount')}
         </button>
       </section>
     </div>

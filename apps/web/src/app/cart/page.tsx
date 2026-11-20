@@ -3,21 +3,23 @@
 import Link from 'next/link';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { formatNZD } from '@darjeeling/shared';
+import { useT } from '@/lib/i18n';
 import { useCart } from '@/components/cart-context';
 import { EmptyState, PageHeading } from '@/components/ui';
 
 export default function CartPage() {
+  const { t } = useT();
   const { lines, totals, updateQuantity, removeItem, loading } = useCart();
 
   if (!loading && lines.length === 0) {
     return (
       <div className="container">
         <EmptyState
-          title="Your cart is empty"
-          message="Add some momos to get started."
+          title={t('cart.emptyTitle')}
+          message={t('cart.emptyBody')}
           action={
             <Link href="/menu" className="btn btn-action">
-              Browse the menu
+              {t('cart.browseMenu')}
             </Link>
           }
         />
@@ -27,14 +29,7 @@ export default function CartPage() {
 
   return (
     <div className="container stack" style={{ gap: 24 }}>
-      <PageHeading
-        kicker={
-          <>
-            <span lang="mi">Tō kete</span> · your basket
-          </>
-        }
-        title="Your cart"
-      />
+      <PageHeading title={t('cart.title')} />
 
       <div className="stack">
         {lines.map((line) => (
@@ -53,7 +48,7 @@ export default function CartPage() {
               <div className="row" style={{ gap: 8 }}>
                 <button
                   className="btn btn-outline"
-                  aria-label={`Decrease ${line.name}`}
+                  aria-label={t('cart.decrease', { name: line.name })}
                   onClick={() => updateQuantity(line.id, line.quantity - 1)}
                 >
                   <Minus size={16} aria-hidden="true" />
@@ -63,14 +58,14 @@ export default function CartPage() {
                 </span>
                 <button
                   className="btn btn-outline"
-                  aria-label={`Increase ${line.name}`}
+                  aria-label={t('cart.increase', { name: line.name })}
                   onClick={() => updateQuantity(line.id, line.quantity + 1)}
                 >
                   <Plus size={16} aria-hidden="true" />
                 </button>
                 <button
                   className="btn btn-ghost"
-                  aria-label={`Remove ${line.name}`}
+                  aria-label={t('cart.remove', { name: line.name })}
                   onClick={() => removeItem(line.id)}
                 >
                   <Trash2 size={18} aria-hidden="true" />
@@ -83,19 +78,19 @@ export default function CartPage() {
 
       <div className="card card-pad stack">
         <div className="row" style={{ justifyContent: 'space-between' }}>
-          <span className="muted">Subtotal (excl. GST)</span>
+          <span className="muted">{t('cart.subtotal')}</span>
           <span>{formatNZD(totals.subtotalCents)}</span>
         </div>
         <div className="row" style={{ justifyContent: 'space-between' }}>
-          <span className="muted">GST (15%)</span>
+          <span className="muted">{t('cart.gst')}</span>
           <span>{formatNZD(totals.gstCents)}</span>
         </div>
         <div className="row" style={{ justifyContent: 'space-between', fontWeight: 800 }}>
-          <span>Total</span>
+          <span>{t('cart.total')}</span>
           <span>{formatNZD(totals.totalCents)}</span>
         </div>
         <Link href="/checkout" className="btn btn-primary btn-lg btn-block">
-          Go to checkout
+          {t('cart.checkout')}
         </Link>
       </div>
     </div>

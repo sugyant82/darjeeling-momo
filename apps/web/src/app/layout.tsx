@@ -10,6 +10,7 @@ import { Providers } from '@/components/providers';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { SPLASH_SCRIPT } from '@/lib/splash';
+import { PREFS_SCRIPT } from '@/lib/prefs';
 import './globals.css';
 
 // Safety guard: refuse to start a production build with placeholders.
@@ -66,6 +67,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <head>
+        {/* Runs before paint: sets data-theme + lang on <html> to avoid a flash. */}
+        <script dangerouslySetInnerHTML={{ __html: PREFS_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: SPLASH_SCRIPT }} />
       </head>
       <body>
