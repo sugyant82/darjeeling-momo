@@ -13,7 +13,12 @@ export async function fetchTodayLocations(
   opts: { includeClosed?: boolean } = {},
 ): Promise<LocationScheduleRow[]> {
   const today = zonedDateString(now);
-  let query = supabase.from('locations_schedule').select('*').eq('date', today).order('pickup_type');
+  // Truck first ('truck' > 'home'): when both are open the truck is the default location.
+  let query = supabase
+    .from('locations_schedule')
+    .select('*')
+    .eq('date', today)
+    .order('pickup_type', { ascending: false });
   if (!opts.includeClosed) query = query.eq('is_closed', false);
   const { data, error } = await query;
   if (error) throw error;

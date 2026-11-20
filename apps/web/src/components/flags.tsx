@@ -35,6 +35,44 @@ export function FlagIndia({ size = 20 }: { size?: number }) {
   );
 }
 
+export function FlagNepal({ size = 20 }: { size?: number }) {
+  const id = useId();
+  const CRIMSON = '#DC143C';
+  const BLUE = '#003893';
+  // Sun: a disc with 12 triangular rays, centred at (12, 15).
+  const rays = Array.from({ length: 12 }).map((_, i) => {
+    const a = (i * Math.PI) / 6;
+    const [cx, cy] = [12, 15];
+    const inner = 1.9;
+    const outer = 3.2;
+    const w = 0.28;
+    const tip = `${cx + outer * Math.cos(a)},${cy + outer * Math.sin(a)}`;
+    const b1 = `${cx + inner * Math.cos(a - w)},${cy + inner * Math.sin(a - w)}`;
+    const b2 = `${cx + inner * Math.cos(a + w)},${cy + inner * Math.sin(a + w)}`;
+    return <polygon key={i} points={`${tip} ${b1} ${b2}`} fill="#FFFFFF" />;
+  });
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" role="img">
+      <clipPath id={id}>
+        <circle cx="12" cy="12" r="12" />
+      </clipPath>
+      <g clipPath={`url(#${id})`}>
+        <rect width="24" height="24" fill={CRIMSON} />
+        {/* Moon (crescent) upper. */}
+        <g>
+          <circle cx="12" cy="7.6" r="2.3" fill="#FFFFFF" />
+          <circle cx="12.7" cy="7" r="1.9" fill={CRIMSON} />
+        </g>
+        {/* Sun lower. */}
+        {rays}
+        <circle cx="12" cy="15" r="1.9" fill="#FFFFFF" />
+        <circle cx="12" cy="15" r="1.2" fill={CRIMSON} />
+      </g>
+      <circle cx="12" cy="12" r="11" fill="none" stroke={BLUE} strokeWidth="2.2" />
+    </svg>
+  );
+}
+
 export function FlagNZ({ size = 20 }: { size?: number }) {
   const id = useId();
   const cantonId = `${id}-c`;

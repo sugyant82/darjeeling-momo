@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Moon, Sun } from 'lucide-react';
 import { usePrefs } from './prefs-context';
 import { useT } from '@/lib/i18n';
-import { FlagIndia, FlagNZ } from './flags';
+import { FlagIndia, FlagNepal, FlagNZ } from './flags';
 import type { Lang } from '@/lib/prefs';
 
-const LANGS: { code: Lang; Flag: typeof FlagNZ }[] = [
-  { code: 'en', Flag: FlagNZ },
-  { code: 'hi', Flag: FlagIndia },
+const LANGS: { code: Lang; Flag: typeof FlagNZ; labelKey: 'lang.en' | 'lang.hi' | 'lang.ne' }[] = [
+  { code: 'en', Flag: FlagNZ, labelKey: 'lang.en' },
+  { code: 'hi', Flag: FlagIndia, labelKey: 'lang.hi' },
+  { code: 'ne', Flag: FlagNepal, labelKey: 'lang.ne' },
 ];
 
 /** Dark-mode toggle + language dropdown (round flag + name), for the header. */
@@ -62,7 +63,7 @@ export function LangThemeControls() {
         </button>
         {open ? (
           <ul className="lang-menu" role="menu" aria-label={t('lang.label')}>
-            {LANGS.map(({ code, Flag }) => (
+            {LANGS.map(({ code, Flag, labelKey }) => (
               <li key={code} role="none">
                 <button
                   type="button"
@@ -75,7 +76,7 @@ export function LangThemeControls() {
                   }}
                 >
                   <Flag size={22} />
-                  <span>{t(code === 'hi' ? 'lang.hi' : 'lang.en')}</span>
+                  <span>{t(labelKey)}</span>
                   {lang === code ? <Check size={16} aria-hidden="true" className="lang-check" /> : null}
                 </button>
               </li>

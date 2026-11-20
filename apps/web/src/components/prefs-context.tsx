@@ -1,7 +1,7 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { HTML_LANG, LANG_KEY, THEME_KEY, type Lang, type Theme } from '@/lib/prefs';
+import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from 'react';
+import { HTML_LANG, LANG_KEY, langFromHtml, THEME_KEY, type Lang, type Theme } from '@/lib/prefs';
 
 interface Prefs {
   theme: Theme;
@@ -13,55 +13,79 @@ interface Prefs {
 
 const PrefsContext = createContext<Prefs | null>(null);
 
-export function PrefsProvider({ children }: { children: React.ReactNode }) {
-  // Start from the SSR defaults so the first client render matches the server HTML
-  // (no hydration mismatch), then sync to what PREFS_SCRIPT applied before paint.
-  // The page colours are already correct via <html data-theme>, so there is no theme flash.
-  const [theme, setThemeState] = useState<Theme>('light');
-  const [lang, setLangState] = useState<Lang>('en');
+/**
+ * Theme + language live on <html> (data-theme / lang), applied before paint by
+ * PREFS_SCRIPT and updated by the setters. We read them through useSyncExternalStore
+ * so the server/first-client render uses the SSR default (no hydration mismatch) and
+ * the real values take over right after hydration — with no setState-in-effect.
+ */
+const listeners = new Set<() => void>();
+function emit() {
+  for (const l of listeners) l();
+}
 
-  useEffect(() => {
-    const domTheme = document.documentElement.getAttribute('data-theme');
-    if (domTheme === 'dark' || domTheme === 'light') setThemeState(domTheme);
-    setLangState(document.documentElement.lang === 'hi-IN' ? 'hi' : 'en');
-  }, []);
-
-  const setTheme = useCallback((t: Theme) => {
-    setThemeState(t);
-    document.documentElement.setAttribute('data-theme', t);
-    try {
-      localStorage.setItem(THEME_KEY, t);
-    } catch {
-      /* storage unavailable */
-    }
-  }, []);
-
-  const setLang = useCallback((l: Lang) => {
-    setLangState(l);
-    document.documentElement.setAttribute('lang', HTML_LANG[l]);
-    try {
-      localStorage.setItem(LANG_KEY, l);
-    } catch {
-      /* storage unavailable */
-    }
-  }, []);
-
-  // Follow OS theme changes only while the viewer hasn't chosen explicitly.
-  useEffect(() => {
-    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
-    if (!mq) return;
-    const onChange = () => {
+let osCleanup: (() => void) | null = null;
+function subscribe(cb: () => void) {
+  listeners.add(cb);
+  // Follow the OS theme while the viewer hasn't chosen explicitly.
+  if (!osCleanup && typeof window !== 'undefined' && window.matchMedia) {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onOs = () => {
       let stored: string | null = null;
       try {
         stored = localStorage.getItem(THEME_KEY);
       } catch {
         /* ignore */
       }
-      if (stored !== 'light' && stored !== 'dark') setTheme(mq.matches ? 'dark' : 'light');
+      if (stored !== 'light' && stored !== 'dark') {
+        document.documentElement.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
+        emit();
+      }
     };
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, [setTheme]);
+    mq.addEventListener('change', onOs);
+    osCleanup = () => mq.removeEventListener('change', onOs);
+  }
+  return () => {
+    listeners.delete(cb);
+    if (listeners.size === 0 && osCleanup) {
+      osCleanup();
+      osCleanup = null;
+    }
+  };
+}
+
+function getSnapshot(): string {
+  const el = document.documentElement;
+  const theme = el.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  return `${theme}|${langFromHtml(el.getAttribute('lang'))}`;
+}
+function getServerSnapshot(): string {
+  return 'light|en';
+}
+
+export function PrefsProvider({ children }: { children: React.ReactNode }) {
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [theme, lang] = snapshot.split('|') as [Theme, Lang];
+
+  const setTheme = useCallback((t: Theme) => {
+    document.documentElement.setAttribute('data-theme', t);
+    try {
+      localStorage.setItem(THEME_KEY, t);
+    } catch {
+      /* storage unavailable */
+    }
+    emit();
+  }, []);
+
+  const setLang = useCallback((l: Lang) => {
+    document.documentElement.setAttribute('lang', HTML_LANG[l]);
+    try {
+      localStorage.setItem(LANG_KEY, l);
+    } catch {
+      /* storage unavailable */
+    }
+    emit();
+  }, []);
 
   const value = useMemo<Prefs>(
     () => ({ theme, lang, setTheme, setLang, toggleTheme: () => setTheme(theme === 'dark' ? 'light' : 'dark') }),

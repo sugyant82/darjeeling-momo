@@ -1161,6 +1161,15 @@ img {
 .hero .btn-soft:hover {
   background: rgba(255, 255, 255, 0.92);
 }
+/* Dark hero: the near-white frosted fill would hide the light label — use a dark glass instead. */
+:root[data-theme='dark'] .hero .btn-soft {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: var(--text);
+}
+:root[data-theme='dark'] .hero .btn-soft:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
 /* Phones: stack the two actions at equal width. */
 @media (max-width: 520px) {
   .hero-ctas {
