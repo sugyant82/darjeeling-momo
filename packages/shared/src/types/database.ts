@@ -7,6 +7,8 @@ import type { OrderStatus } from '../order-status';
 
 export type UserRole = 'customer' | 'staff' | 'admin';
 export type Platform = 'ios' | 'android' | 'web';
+/** Where a day's orders are collected from. */
+export type PickupType = 'home' | 'truck';
 
 /** A selected option captured on a cart/order line (snapshot). */
 export interface SelectedOption {
@@ -45,6 +47,10 @@ export type MenuItemRow = {
   image_url: string | null;
   sort: number;
   is_sample: boolean;
+  /** Minimum minutes to prepare an order containing this item. */
+  prep_minutes: number;
+  /** Ready-made stock: null = untracked (always available); >=0 = count, 0 = sold out. */
+  stock_qty: number | null;
   created_at: string;
 }
 
@@ -70,6 +76,7 @@ export type OptionChoiceRow = {
 export type LocationScheduleRow = {
   id: string;
   date: string; // YYYY-MM-DD
+  pickup_type: PickupType;
   place: string;
   address: string;
   map_link: string | null;
@@ -77,6 +84,10 @@ export type LocationScheduleRow = {
   close_time: string; // HH:MM:SS
   slot_minutes: number;
   max_orders_per_slot: number;
+  /** Live "kitchen busy" dial: extra minutes added to every order's prep estimate. */
+  prep_buffer_minutes: number;
+  /** Live pause (distinct from is_closed): open but not taking new orders right now. */
+  accepting_orders: boolean;
   is_closed: boolean;
 }
 
@@ -247,6 +258,14 @@ export type Database = {
     Functions: {
       merge_guest_cart: {
         Args: { p_items: unknown };
+        Returns: undefined;
+      };
+      slot_load: {
+        Args: { p_date: string };
+        Returns: { location_id: string | null; pickup_slot: string; orders: number }[];
+      };
+      decrement_stock_for_order: {
+        Args: { p_order_id: string };
         Returns: undefined;
       };
     };

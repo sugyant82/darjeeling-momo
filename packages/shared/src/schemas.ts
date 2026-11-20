@@ -5,6 +5,7 @@ export const orderStatusSchema = z.enum(ORDER_STATUSES);
 export const userRoleSchema = z.enum(['customer', 'staff', 'admin']);
 export const tagSchema = z.enum(['veg', 'spicy', 'bestseller']);
 export const platformSchema = z.enum(['ios', 'android', 'web']);
+export const pickupTypeSchema = z.enum(['home', 'truck']);
 
 export const selectedOptionSchema = z.object({
   optionId: z.string(),
@@ -84,6 +85,9 @@ export const menuItemInputSchema = z.object({
   isAvailable: z.boolean().default(true),
   imageUrl: z.string().url().nullable().optional(),
   sort: z.number().int().default(0),
+  prepMinutes: z.number().int().min(0).max(600).default(15),
+  /** null = untracked (always available); >=0 = ready-made stock count. */
+  stockQty: z.number().int().min(0).max(100000).nullable().default(null),
 });
 export type MenuItemInput = z.infer<typeof menuItemInputSchema>;
 
@@ -100,6 +104,7 @@ export const scheduleInputSchema = z
   .object({
     id: z.string().uuid().optional(),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    pickupType: pickupTypeSchema.default('truck'),
     place: z.string().trim().min(1).max(120),
     address: z.string().trim().min(1).max(200),
     mapLink: z.string().url().nullable().optional(),
@@ -107,6 +112,8 @@ export const scheduleInputSchema = z
     closeTime: z.string().regex(/^\d{2}:\d{2}$/),
     slotMinutes: z.number().int().min(5).max(120),
     maxOrdersPerSlot: z.number().int().min(1).max(100),
+    prepBufferMinutes: z.number().int().min(0).max(240).default(0),
+    acceptingOrders: z.boolean().default(true),
     isClosed: z.boolean().default(false),
   })
   .refine((v) => v.isClosed || v.openTime < v.closeTime, {

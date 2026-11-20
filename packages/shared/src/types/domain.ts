@@ -48,6 +48,8 @@ export interface TodaySchedule extends LocationScheduleRow {}
 
 export interface Order extends OrderRow {
   items: OrderItemRow[];
+  /** The pickup location this order is collected from (null for legacy orders). */
+  location?: LocationScheduleRow | null;
 }
 
 export interface OrderSummary extends OrderRow {

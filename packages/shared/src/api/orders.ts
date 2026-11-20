@@ -81,7 +81,17 @@ export async function fetchOrder(
     .select('*')
     .eq('order_id', orderId);
   if (iErr) throw iErr;
-  return { ...(order as OrderRow), items: (items ?? []) as OrderItemRow[] };
+
+  let location = null;
+  if (order.location_id) {
+    const { data: loc } = await supabase
+      .from('locations_schedule')
+      .select('*')
+      .eq('id', order.location_id)
+      .maybeSingle();
+    location = loc ?? null;
+  }
+  return { ...(order as OrderRow), items: (items ?? []) as OrderItemRow[], location };
 }
 
 export async function fetchOrderByNumber(

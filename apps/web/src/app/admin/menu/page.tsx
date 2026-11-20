@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { Clock, Minus, Plus } from 'lucide-react';
 import {
+  adjustStock,
   centsToDollars,
   deleteMenuItem,
   dollarsToCents,
@@ -43,16 +45,20 @@ export default function MenuManagerPage() {
         <section key={cat.id} className="stack">
           <h2>{cat.name}</h2>
           {cat.items.map((item) => (
-            <div key={item.id} className="card card-pad row" style={{ justifyContent: 'space-between' }}>
+            <div key={item.id} className="card card-pad row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
               <div>
                 <strong>{item.name}</strong> · {formatNZD(item.price_cents)}
-                <div className="row" style={{ gap: 6, marginTop: 4 }}>
+                <div className="row" style={{ gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                   {item.tags.map((t) => (
                     <TagBadge key={t} tag={t} />
                   ))}
+                  <span className="muted row" style={{ gap: 3, fontSize: 'var(--text-caption)' }}>
+                    <Clock size={13} aria-hidden="true" /> {item.prep_minutes}m prep
+                  </span>
                 </div>
               </div>
-              <div className="row" style={{ gap: 8 }}>
+              <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                <StockControl item={item} onDone={() => refetch()} />
                 <AvailabilityToggle item={item} onDone={() => refetch()} />
                 <button className="btn btn-outline" onClick={() => setEditing(item)}>
                   Edit
@@ -74,6 +80,50 @@ export default function MenuManagerPage() {
           }}
         />
       ) : null}
+    </div>
+  );
+}
+
+/** Quick ready-made stock adjuster for tracked items (untracked items show nothing). */
+function StockControl({ item, onDone }: { item: MenuItem; onDone: () => void }) {
+  const supabase = getBrowserSupabase();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  if (item.stock_qty == null) return null;
+
+  async function bump(delta: number) {
+    setBusy(true);
+    try {
+      await adjustStock(supabase, item.id, { delta });
+      onDone();
+    } catch {
+      toast.show('Could not update stock.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const out = item.stock_qty === 0;
+  return (
+    <div
+      className="row"
+      style={{
+        gap: 4,
+        padding: '2px 6px',
+        borderRadius: 'var(--radius-pill)',
+        border: `1px solid ${out ? 'var(--color-achar)' : 'var(--color-border)'}`,
+      }}
+      aria-label={`Stock ${item.stock_qty}`}
+    >
+      <button className="btn btn-ghost" style={{ minHeight: 32, padding: 4 }} disabled={busy || item.stock_qty === 0} aria-label={`Decrease ${item.name} stock`} onClick={() => bump(-1)}>
+        <Minus size={16} aria-hidden="true" />
+      </button>
+      <span style={{ minWidth: 48, textAlign: 'center', fontWeight: 700, color: out ? 'var(--color-achar)' : undefined }}>
+        {out ? 'Out' : `${item.stock_qty} left`}
+      </span>
+      <button className="btn btn-ghost" style={{ minHeight: 32, padding: 4 }} disabled={busy} aria-label={`Increase ${item.name} stock`} onClick={() => bump(1)}>
+        <Plus size={16} aria-hidden="true" />
+      </button>
     </div>
   );
 }
@@ -125,6 +175,9 @@ function ItemEditor({
   const [tags, setTags] = useState<Tag[]>((item?.tags as Tag[]) ?? []);
   const [available, setAvailable] = useState(item?.is_available ?? true);
   const [imageUrl, setImageUrl] = useState<string | null>(item?.image_url ?? null);
+  const [prepMinutes, setPrepMinutes] = useState(item?.prep_minutes ?? 15);
+  const [stockTracked, setStockTracked] = useState(item?.stock_qty != null);
+  const [stockQty, setStockQty] = useState(item?.stock_qty ?? 0);
   const [saving, setSaving] = useState(false);
 
   const priceCents = useMemo(() => {
@@ -160,6 +213,8 @@ function ItemEditor({
         isAvailable: available,
         imageUrl,
         sort: item?.sort ?? 0,
+        prepMinutes,
+        stockQty: stockTracked ? Math.max(0, Math.round(stockQty)) : null,
       });
       qc.invalidateQueries({ queryKey: ['menu'] });
       toast.show('Item saved.', 'success');
@@ -237,6 +292,49 @@ function ItemEditor({
           <input type="checkbox" checked={available} onChange={(e) => setAvailable(e.target.checked)} />
           Available
         </label>
+
+        <div className="field">
+          <label htmlFor="i-prep">Prep time (minutes)</label>
+          <input
+            id="i-prep"
+            className="input"
+            type="number"
+            min={0}
+            max={600}
+            value={prepMinutes}
+            onChange={(e) => setPrepMinutes(Number(e.target.value))}
+          />
+          <span className="muted" style={{ fontSize: 'var(--text-caption)' }}>
+            Minimum time to prepare an order with this item. Checkout offers the longest item’s prep
+            time plus the live kitchen buffer.
+          </span>
+        </div>
+
+        <fieldset className="stack" style={{ border: 'none', padding: 0, gap: 8 }}>
+          <legend style={{ fontWeight: 700 }}>Stock</legend>
+          <label className="row" style={{ gap: 8 }}>
+            <input type="checkbox" checked={stockTracked} onChange={(e) => setStockTracked(e.target.checked)} />
+            Track ready-made stock (auto sold-out at zero)
+          </label>
+          {stockTracked ? (
+            <div className="field">
+              <label htmlFor="i-stock">Units in stock</label>
+              <input
+                id="i-stock"
+                className="input"
+                type="number"
+                min={0}
+                value={stockQty}
+                onChange={(e) => setStockQty(Number(e.target.value))}
+              />
+            </div>
+          ) : (
+            <span className="muted" style={{ fontSize: 'var(--text-caption)' }}>
+              Untracked — always available (made to order).
+            </span>
+          )}
+        </fieldset>
+
         <div className="field">
           <label htmlFor="i-img">Photo</label>
           {imageUrl ? (

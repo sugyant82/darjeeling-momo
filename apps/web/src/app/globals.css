@@ -1927,6 +1927,45 @@ html[data-splash='show'] .splash[data-leaving] {
   }
 }
 
+/* Pickup location chooser (checkout) */
+.pickup-locations {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+@media (min-width: 560px) {
+  .pickup-locations {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.pickup-loc {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--color-border);
+  background: var(--color-card);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.pickup-loc:hover {
+  border-color: rgba(31, 42, 68, 0.3);
+}
+.pickup-loc.is-selected {
+  border-color: var(--color-marigold);
+  box-shadow: 0 0 0 3px rgba(232, 163, 61, 0.2);
+}
+.pickup-loc-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ---------------------------------------------------------------------------
    Order status progress + admin board
 --------------------------------------------------------------------------- */

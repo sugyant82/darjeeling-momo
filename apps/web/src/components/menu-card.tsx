@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import { Plus } from 'lucide-react';
-import { formatNZD } from '@darjeeling/shared';
+import { formatNZD, isItemAvailable } from '@darjeeling/shared';
 import type { MenuItem } from '@darjeeling/shared/types';
 import { TagBadge } from './ui';
 
@@ -16,7 +16,9 @@ export function MenuCard({
   /** Position in its grid, used to stagger the entrance animation. */
   index?: number;
 }) {
-  const soldOut = !item.is_available;
+  const soldOut = !isItemAvailable(item);
+  // Low-stock nudge for tracked items that are still available.
+  const lowStock = item.stock_qty != null && item.stock_qty > 0 && item.stock_qty <= 5;
   return (
     <article
       className={`card menu-card${soldOut ? ' sold-out' : ''}`}
@@ -48,6 +50,11 @@ export function MenuCard({
               <TagBadge key={t} tag={t} />
             ))}
           </div>
+        ) : null}
+        {lowStock ? (
+          <span className="tag tag-spicy" style={{ alignSelf: 'flex-start' }}>
+            Only {item.stock_qty} left
+          </span>
         ) : null}
         <div className="spacer" />
         {soldOut ? (

@@ -32,8 +32,19 @@ Deno.serve(async (req) => {
     if (error) throw error;
     if (order.user_id !== user.id) return jsonResponse({ error: 'Not your order' }, 403);
 
+    if (order.paid_at) {
+      // Already paid (e.g. a double-tap) — report the truth rather than cancelling.
+      return jsonResponse({ status: order.status, paid: true });
+    }
+
     if (decision === 'decline') {
-      await admin.from('orders').update({ status: 'cancelled' }).eq('id', orderId).is('paid_at', null);
+      // Only an unpaid, still-'received' order can be declined; never revive a cancelled one.
+      await admin
+        .from('orders')
+        .update({ status: 'cancelled' })
+        .eq('id', orderId)
+        .is('paid_at', null)
+        .eq('status', 'received');
       return jsonResponse({ status: 'cancelled', paid: false });
     }
 

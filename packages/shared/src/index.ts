@@ -3,6 +3,7 @@ export * from './integrations';
 export * from './money';
 export * from './pricing';
 export * from './order-status';
+export * from './pickup';
 export * from './time';
 export * from './schemas';
 export * from './auth';

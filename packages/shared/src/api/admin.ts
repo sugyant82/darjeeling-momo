@@ -18,6 +18,8 @@ export async function upsertMenuItem(
     is_available: input.isAvailable,
     image_url: input.imageUrl ?? null,
     sort: input.sort,
+    prep_minutes: input.prepMinutes,
+    stock_qty: input.stockQty,
     is_sample: false,
   };
   const { data, error } = await supabase
@@ -49,6 +51,37 @@ export async function deleteMenuItem(
   if (error) throw error;
 }
 
+/**
+ * Quick stock change during service. `set` replaces the count; `delta` adjusts it
+ * (clamped at 0); `untrack` turns tracking off (always available). Returns the new value.
+ */
+export async function adjustStock(
+  supabase: DarjeelingSupabaseClient,
+  itemId: string,
+  change: { set?: number | null; delta?: number; untrack?: boolean },
+): Promise<number | null> {
+  let next: number | null;
+  if (change.untrack) {
+    next = null;
+  } else if (change.set !== undefined) {
+    next = change.set == null ? null : Math.max(0, Math.round(change.set));
+  } else if (change.delta !== undefined) {
+    const { data: current, error: readErr } = await supabase
+      .from('menu_items')
+      .select('stock_qty')
+      .eq('id', itemId)
+      .single();
+    if (readErr) throw readErr;
+    const base = current.stock_qty ?? 0;
+    next = Math.max(0, base + change.delta);
+  } else {
+    return undefined as never;
+  }
+  const { error } = await supabase.from('menu_items').update({ stock_qty: next }).eq('id', itemId);
+  if (error) throw error;
+  return next;
+}
+
 export async function upsertCategory(
   supabase: DarjeelingSupabaseClient,
   input: CategoryInput,
@@ -70,6 +103,7 @@ export async function upsertSchedule(
     {
       ...(input.id ? { id: input.id } : {}),
       date: input.date,
+      pickup_type: input.pickupType,
       place: input.place,
       address: input.address,
       map_link: input.mapLink ?? null,
@@ -77,10 +111,39 @@ export async function upsertSchedule(
       close_time: `${input.closeTime}:00`,
       slot_minutes: input.slotMinutes,
       max_orders_per_slot: input.maxOrdersPerSlot,
+      prep_buffer_minutes: input.prepBufferMinutes,
+      accepting_orders: input.acceptingOrders,
       is_closed: input.isClosed,
     },
-    { onConflict: 'date' },
+    { onConflict: 'date,pickup_type' },
   );
+  if (error) throw error;
+}
+
+/**
+ * Live kitchen dial for a single location row: pause/resume new orders and set the
+ * "we're busy" prep buffer. Fast partial update used from the orders board during service.
+ */
+export async function updateKitchenControls(
+  supabase: DarjeelingSupabaseClient,
+  scheduleId: string,
+  change: { acceptingOrders?: boolean; prepBufferMinutes?: number },
+): Promise<void> {
+  const patch: Partial<Pick<import('../types/database').LocationScheduleRow, 'accepting_orders' | 'prep_buffer_minutes'>> = {};
+  if (change.acceptingOrders !== undefined) patch.accepting_orders = change.acceptingOrders;
+  if (change.prepBufferMinutes !== undefined) {
+    patch.prep_buffer_minutes = Math.max(0, Math.min(240, Math.round(change.prepBufferMinutes)));
+  }
+  if (Object.keys(patch).length === 0) return;
+  const { error } = await supabase.from('locations_schedule').update(patch).eq('id', scheduleId);
+  if (error) throw error;
+}
+
+export async function deleteSchedule(
+  supabase: DarjeelingSupabaseClient,
+  scheduleId: string,
+): Promise<void> {
+  const { error } = await supabase.from('locations_schedule').delete().eq('id', scheduleId);
   if (error) throw error;
 }
 

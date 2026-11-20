@@ -6,6 +6,8 @@ import {
   fetchAvailableSlots,
   fetchMenu,
   fetchOrderHistory,
+  fetchPickupOptions,
+  fetchTodayLocations,
   fetchTodaySales,
   fetchTodaySchedule,
   fetchOrder,
@@ -31,6 +33,28 @@ export function useAvailableSlots() {
     queryKey: ['slots'],
     queryFn: () => fetchAvailableSlots(supabase),
     staleTime: 15_000,
+  });
+}
+
+/** Today's pickup locations (home and/or truck). */
+export function useTodayLocations() {
+  const supabase = getBrowserSupabase();
+  return useQuery({
+    queryKey: ['today-locations'],
+    queryFn: () => fetchTodayLocations(supabase),
+    staleTime: 15_000,
+  });
+}
+
+/** Cart-aware pickup options per location: earliest achievable time + bookable slots. */
+export function usePickupOptions(prepMinutes: number) {
+  const supabase = getBrowserSupabase();
+  return useQuery({
+    queryKey: ['pickup-options', prepMinutes],
+    queryFn: () => fetchPickupOptions(supabase, { prepMinutes }),
+    // Keep achievable times and fullness fresh as the clock moves and the kitchen dial changes.
+    staleTime: 10_000,
+    refetchInterval: 30_000,
   });
 }
 

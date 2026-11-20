@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import {
   CUSTOMER_STEPS,
+  PICKUP_TYPE_LABEL,
   STATUS_LABEL,
   formatNZD,
   formatSlotTime,
@@ -95,6 +96,19 @@ export default function OrderPage() {
 
       <div className="card card-pad stack">
         <h2>Pickup</h2>
+        {order.location ? (
+          <div className="stack" style={{ gap: 2 }}>
+            <strong>
+              {PICKUP_TYPE_LABEL[order.location.pickup_type]} · {order.location.place}
+            </strong>
+            <span className="muted">{order.location.address}</span>
+            {order.location.map_link ? (
+              <a href={order.location.map_link} target="_blank" rel="noreferrer">
+                Open in maps
+              </a>
+            ) : null}
+          </div>
+        ) : null}
         {order.pickup_slot ? (
           <span>Ready around {formatSlotTime(order.pickup_slot)}</span>
         ) : (

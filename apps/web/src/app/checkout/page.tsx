@@ -1,20 +1,26 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Clock, Home, Truck } from 'lucide-react';
 import {
-  createPayment,
   createOrderInputSchema,
+  createPayment,
   fetchProfile,
   formatNZD,
   formatSlotTime,
+  formatWait,
+  isItemAvailable,
+  orderPrepMinutes,
+  PICKUP_TYPE_LABEL,
   type CreatePaymentResponse,
+  type PickupOption,
 } from '@darjeeling/shared';
 import { getBrowserSupabase } from '@/lib/supabase/client';
 import { useAuth } from '@/components/auth-context';
 import { useCart } from '@/components/cart-context';
-import { useAvailableSlots } from '@/hooks/queries';
+import { useMenu, usePickupOptions } from '@/hooks/queries';
 import { SignIn } from '@/components/sign-in';
 import { MockPaymentSheet } from '@/components/mock-payment-sheet';
 import { StripePaymentSheet } from '@/components/stripe-payment-sheet';
@@ -42,8 +48,36 @@ function CheckoutForm({ userId }: { userId: string }) {
   const router = useRouter();
   const toast = useToast();
   const cart = useCart();
-  const { data: slotData, isLoading: slotsLoading } = useAvailableSlots();
+  const { data: menu } = useMenu();
 
+  // Prep time for this cart = the longest item prep time, read from the current menu.
+  const prepByItem = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const cat of menu ?? []) for (const it of cat.items) map.set(it.id, it.prep_minutes);
+    return map;
+  }, [menu]);
+  const prepMinutes = useMemo(
+    () => orderPrepMinutes(cart.lines.map((l) => ({ prepMinutes: prepByItem.get(l.menuItemId) ?? 0 }))),
+    [cart.lines, prepByItem],
+  );
+
+  // Any cart item that's now unavailable or short on stock.
+  const availabilityById = useMemo(() => {
+    const map = new Map<string, { available: boolean; stock: number | null; name: string }>();
+    for (const cat of menu ?? [])
+      for (const it of cat.items)
+        map.set(it.id, { available: isItemAvailable(it), stock: it.stock_qty, name: it.name });
+    return map;
+  }, [menu]);
+  const stockProblem = cart.lines.find((l) => {
+    const a = availabilityById.get(l.menuItemId);
+    if (!a) return false;
+    return !a.available || (a.stock != null && l.quantity > a.stock);
+  });
+
+  const { data: options, isLoading: optionsLoading } = usePickupOptions(prepMinutes);
+
+  const [locationId, setLocationId] = useState<string>('');
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [mode, setMode] = useState<'asap' | 'scheduled'>('asap');
@@ -53,13 +87,20 @@ function CheckoutForm({ userId }: { userId: string }) {
 
   useEffect(() => {
     fetchProfile(supabase, userId).then((p) => {
-      if (p?.phone) setPhone(p.phone);
+      if (p?.phone) setPhone((prev) => prev || p.phone || '');
     });
   }, [supabase, userId]);
 
-  const availableSlots = (slotData?.slots ?? []).filter((s) => !s.full);
-  const open = slotData?.open ?? false;
-  const canOrder = open && availableSlots.length > 0;
+  // Default the location to the first one accepting orders.
+  const selected: PickupOption | undefined = useMemo(() => {
+    if (!options || options.length === 0) return undefined;
+    return options.find((o) => o.schedule.id === locationId) ?? options.find((o) => o.accepting) ?? options[0];
+  }, [options, locationId]);
+
+  // Keep a chosen slot valid as time/fullness shifts.
+  const availableSlots = (selected?.slots ?? []).filter((s) => !s.full);
+  const chosenSlot = availableSlots.some((s) => s.startIso === slotIso) ? slotIso : '';
+  const canOrder = Boolean(selected?.accepting) && availableSlots.length > 0 && !stockProblem;
 
   if (!cart.loading && cart.lines.length === 0 && !payment) {
     return (
@@ -77,16 +118,18 @@ function CheckoutForm({ userId }: { userId: string }) {
     );
   }
 
-  function resolvePickup(): { pickupSlotIso: string | null; pickupAsap: boolean } {
-    if (mode === 'asap') {
-      return { pickupSlotIso: availableSlots[0]?.startIso ?? null, pickupAsap: true };
-    }
-    return { pickupSlotIso: slotIso || null, pickupAsap: false };
-  }
-
   async function submit() {
-    const pickup = resolvePickup();
-    const input = {
+    if (!selected) return;
+    const pickup =
+      mode === 'asap'
+        ? { pickupSlotIso: availableSlots[0]?.startIso ?? null, pickupAsap: true }
+        : { pickupSlotIso: chosenSlot || null, pickupAsap: false };
+    if (mode === 'scheduled' && !chosenSlot) {
+      toast.show('Please choose a pickup time.', 'error');
+      return;
+    }
+
+    const parsed = createOrderInputSchema.safeParse({
       items: cart.lines.map((l) => ({
         menuItemId: l.menuItemId,
         quantity: l.quantity,
@@ -94,18 +137,12 @@ function CheckoutForm({ userId }: { userId: string }) {
       })),
       pickupSlotIso: pickup.pickupSlotIso,
       pickupAsap: pickup.pickupAsap,
-      locationId: slotData?.schedule?.id ?? null,
+      locationId: selected.schedule.id,
       phone,
       notes,
-    };
-
-    const parsed = createOrderInputSchema.safeParse(input);
+    });
     if (!parsed.success) {
       toast.show(parsed.error.issues[0]?.message ?? 'Please check your details.', 'error');
-      return;
-    }
-    if (mode === 'scheduled' && !slotIso) {
-      toast.show('Please choose a pickup time.', 'error');
       return;
     }
 
@@ -114,8 +151,7 @@ function CheckoutForm({ userId }: { userId: string }) {
       const res = await createPayment(supabase, parsed.data);
       setPayment(res);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not start checkout.';
-      toast.show(message, 'error');
+      toast.show(err instanceof Error ? err.message : 'Could not start checkout.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -128,124 +164,125 @@ function CheckoutForm({ userId }: { userId: string }) {
     if (orderId) router.push(`/order/${orderId}`);
   }
 
+  const noLocations = !optionsLoading && (!options || options.length === 0);
+
   return (
     <div className="container stack" style={{ gap: 24 }}>
       <h1>Checkout</h1>
 
-      {slotsLoading ? (
-        <Spinner label="Checking pickup times…" />
-      ) : !open ? (
-        <div className="banner banner-warn">The truck is closed right now — checkout is paused.</div>
-      ) : availableSlots.length === 0 ? (
-        <div className="banner banner-warn">All pickup slots are full today. Please try later.</div>
+      {stockProblem ? (
+        <div className="banner banner-error">
+          Some items in your cart just sold out or ran low. Please adjust your cart.
+        </div>
       ) : null}
 
-      {/* Pickup */}
-      <section className="card card-pad stack">
-        <h2>Pickup</h2>
-        <div className="stack">
-          <strong>{slotData?.schedule?.place ?? 'Truck location'}</strong>
-          <span className="muted">{slotData?.schedule?.address}</span>
-        </div>
-        <fieldset className="stack" style={{ border: 'none', padding: 0, margin: 0 }}>
-          <legend style={{ fontWeight: 700 }}>When</legend>
-          <label className="row card card-pad" style={{ padding: 12, gap: 10 }}>
-            <input
-              type="radio"
-              name="mode"
-              checked={mode === 'asap'}
-              onChange={() => setMode('asap')}
-              disabled={!canOrder}
-            />
-            <span>
-              ASAP{' '}
-              {availableSlots[0] ? (
-                <span className="muted">(ready around {availableSlots[0].label})</span>
-              ) : null}
-            </span>
-          </label>
-          <label className="row card card-pad" style={{ padding: 12, gap: 10 }}>
-            <input
-              type="radio"
-              name="mode"
-              checked={mode === 'scheduled'}
-              onChange={() => setMode('scheduled')}
-              disabled={!canOrder}
-            />
-            <span>Schedule a time</span>
-          </label>
-          {mode === 'scheduled' ? (
-            <div className="field">
-              <label htmlFor="slot">Pickup time</label>
-              <select
-                id="slot"
-                className="select"
-                value={slotIso}
-                onChange={(e) => setSlotIso(e.target.value)}
-              >
-                <option value="">Choose a time…</option>
-                {availableSlots.map((s) => (
-                  <option key={s.startIso} value={s.startIso}>
-                    {formatSlotTime(s.startIso)}
-                  </option>
+      {optionsLoading ? (
+        <Spinner label="Checking pickup times…" />
+      ) : noLocations ? (
+        <div className="banner banner-warn">No pickup is available today. Please check back soon.</div>
+      ) : (
+        <>
+          {/* Pickup location */}
+          <section className="card card-pad stack">
+            <h2>Pickup</h2>
+            {options!.length > 1 ? (
+              <div className="pickup-locations">
+                {options!.map((opt) => (
+                  <LocationChoice
+                    key={opt.schedule.id}
+                    opt={opt}
+                    selected={selected?.schedule.id === opt.schedule.id}
+                    onSelect={() => {
+                      setLocationId(opt.schedule.id);
+                      setSlotIso('');
+                    }}
+                  />
                 ))}
-              </select>
+              </div>
+            ) : selected ? (
+              <div className="stack" style={{ gap: 4 }}>
+                <strong>
+                  {selected.schedule.pickup_type === 'home' ? <Home size={16} /> : <Truck size={16} />}{' '}
+                  {selected.schedule.place}
+                </strong>
+                <span className="muted">{selected.schedule.address}</span>
+              </div>
+            ) : null}
+
+            {selected && !selected.accepting ? (
+              <div className="banner banner-warn">
+                {selected.open
+                  ? 'This kitchen has paused new orders right now. Please check back soon.'
+                  : 'This location is closed right now.'}
+              </div>
+            ) : null}
+
+            {selected?.accepting ? (
+              <PickupWhen
+                option={selected}
+                prepMinutes={prepMinutes}
+                mode={mode}
+                setMode={setMode}
+                slotIso={chosenSlot}
+                setSlotIso={setSlotIso}
+                canOrder={canOrder}
+              />
+            ) : null}
+          </section>
+
+          {/* Contact */}
+          <section className="card card-pad stack">
+            <h2>Contact</h2>
+            <div className="field">
+              <label htmlFor="phone">Phone number</label>
+              <input
+                id="phone"
+                className="input"
+                type="tel"
+                inputMode="tel"
+                placeholder="021 123 4567"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
             </div>
-          ) : null}
-        </fieldset>
-      </section>
+            <div className="field">
+              <label htmlFor="notes">Order notes (optional)</label>
+              <textarea
+                id="notes"
+                className="textarea"
+                placeholder="Allergies, extra achar on the side…"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                maxLength={500}
+              />
+            </div>
+          </section>
 
-      {/* Contact */}
-      <section className="card card-pad stack">
-        <h2>Contact</h2>
-        <div className="field">
-          <label htmlFor="phone">Phone number</label>
-          <input
-            id="phone"
-            className="input"
-            type="tel"
-            inputMode="tel"
-            placeholder="021 123 4567"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            required
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="notes">Order notes (optional)</label>
-          <textarea
-            id="notes"
-            className="textarea"
-            placeholder="Allergies, extra achar on the side…"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={500}
-          />
-        </div>
-      </section>
-
-      {/* Totals + pay */}
-      <section className="card card-pad stack">
-        <div className="row" style={{ justifyContent: 'space-between' }}>
-          <span className="muted">Subtotal (excl. GST)</span>
-          <span>{formatNZD(cart.totals.subtotalCents)}</span>
-        </div>
-        <div className="row" style={{ justifyContent: 'space-between' }}>
-          <span className="muted">GST (15%)</span>
-          <span>{formatNZD(cart.totals.gstCents)}</span>
-        </div>
-        <div className="row" style={{ justifyContent: 'space-between', fontWeight: 800 }}>
-          <span>Total</span>
-          <span>{formatNZD(cart.totals.totalCents)}</span>
-        </div>
-        <button
-          className="btn btn-primary btn-lg btn-block"
-          onClick={submit}
-          disabled={!canOrder || submitting || !phone}
-        >
-          {submitting ? 'Starting payment…' : `Pay ${formatNZD(cart.totals.totalCents)}`}
-        </button>
-      </section>
+          {/* Totals + pay */}
+          <section className="card card-pad stack">
+            <div className="row" style={{ justifyContent: 'space-between' }}>
+              <span className="muted">Subtotal (excl. GST)</span>
+              <span>{formatNZD(cart.totals.subtotalCents)}</span>
+            </div>
+            <div className="row" style={{ justifyContent: 'space-between' }}>
+              <span className="muted">GST (15%)</span>
+              <span>{formatNZD(cart.totals.gstCents)}</span>
+            </div>
+            <div className="row" style={{ justifyContent: 'space-between', fontWeight: 800 }}>
+              <span>Total</span>
+              <span>{formatNZD(cart.totals.totalCents)}</span>
+            </div>
+            <button
+              className="btn btn-primary btn-lg btn-block"
+              onClick={submit}
+              disabled={!canOrder || submitting || !phone}
+            >
+              {submitting ? 'Starting payment…' : `Pay ${formatNZD(cart.totals.totalCents)}`}
+            </button>
+          </section>
+        </>
+      )}
 
       {payment?.provider === 'mock' ? (
         <MockPaymentSheet
@@ -265,5 +302,125 @@ function CheckoutForm({ userId }: { userId: string }) {
         />
       ) : null}
     </div>
+  );
+}
+
+function LocationChoice({
+  opt,
+  selected,
+  onSelect,
+}: {
+  opt: PickupOption;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const Icon = opt.schedule.pickup_type === 'home' ? Home : Truck;
+  return (
+    <button
+      type="button"
+      className={`pickup-loc${selected ? ' is-selected' : ''}`}
+      aria-pressed={selected}
+      onClick={onSelect}
+    >
+      <span className="pickup-loc-head">
+        <Icon size={18} aria-hidden="true" />
+        <span className="tag" style={{ background: 'var(--color-border)', color: 'var(--color-indigo)' }}>
+          {PICKUP_TYPE_LABEL[opt.schedule.pickup_type]}
+        </span>
+        {!opt.accepting ? <span className="muted">· {opt.open ? 'paused' : 'closed'}</span> : null}
+      </span>
+      <strong>{opt.schedule.place}</strong>
+      <span className="muted" style={{ fontSize: 'var(--text-label)' }}>
+        {opt.schedule.address}
+      </span>
+    </button>
+  );
+}
+
+function PickupWhen({
+  option,
+  prepMinutes,
+  mode,
+  setMode,
+  slotIso,
+  setSlotIso,
+  canOrder,
+}: {
+  option: PickupOption;
+  prepMinutes: number;
+  mode: 'asap' | 'scheduled';
+  setMode: (m: 'asap' | 'scheduled') => void;
+  slotIso: string;
+  setSlotIso: (s: string) => void;
+  canOrder: boolean;
+}) {
+  const availableSlots = option.slots.filter((s) => !s.full);
+  const earliest = availableSlots[0];
+  const wait = formatWait(option.leadMinutes);
+
+  return (
+    <>
+      <div className="banner banner-info row" style={{ gap: 8 }}>
+        <Clock size={18} aria-hidden="true" />
+        <span>
+          {prepMinutes > 0 ? (
+            <>
+              Momos take <strong>{wait}</strong> to prepare right now.{' '}
+            </>
+          ) : null}
+          {earliest ? (
+            <>
+              Earliest pickup <strong>{earliest.label}</strong>.
+            </>
+          ) : (
+            'No pickup times left today.'
+          )}
+        </span>
+      </div>
+
+      {availableSlots.length === 0 ? (
+        <div className="banner banner-warn">No pickup times are available — please try again soon.</div>
+      ) : (
+        <fieldset className="stack" style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend style={{ fontWeight: 700 }}>When</legend>
+          <label className="row card card-pad" style={{ padding: 12, gap: 10 }}>
+            <input
+              type="radio"
+              name="mode"
+              checked={mode === 'asap'}
+              onChange={() => setMode('asap')}
+              disabled={!canOrder}
+            />
+            <span>
+              ASAP {earliest ? <span className="muted">(ready around {earliest.label})</span> : null}
+            </span>
+          </label>
+          <label className="row card card-pad" style={{ padding: 12, gap: 10 }}>
+            <input
+              type="radio"
+              name="mode"
+              checked={mode === 'scheduled'}
+              onChange={() => setMode('scheduled')}
+              disabled={!canOrder}
+            />
+            <span>Schedule a time</span>
+          </label>
+          {mode === 'scheduled' ? (
+            <div className="field">
+              <label htmlFor="slot">Pickup time</label>
+              <select id="slot" className="select" value={slotIso} onChange={(e) => setSlotIso(e.target.value)}>
+                <option value="">Choose a time…</option>
+                {option.slots.map((s) => (
+                  <option key={s.startIso} value={s.startIso} disabled={s.full}>
+                    {formatSlotTime(s.startIso)}
+                    {s.full ? ' — full' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+        </fieldset>
+      )}
+    </>
   );
 }

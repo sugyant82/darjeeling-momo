@@ -2,18 +2,21 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { Home, Pause, Play, Truck } from 'lucide-react';
 import {
   formatNZD,
   formatSlotTime,
+  PICKUP_TYPE_LABEL,
   primaryNextStatus,
   STATUS_LABEL,
   subscribeToActiveOrders,
+  updateKitchenControls,
   updateOrderStatus,
   type OrderStatus,
 } from '@darjeeling/shared';
-import type { Order } from '@darjeeling/shared/types';
+import type { LocationScheduleRow, Order } from '@darjeeling/shared/types';
 import { getBrowserSupabase } from '@/lib/supabase/client';
-import { useActiveOrders } from '@/hooks/queries';
+import { useActiveOrders, useTodayLocations } from '@/hooks/queries';
 import { StatusBadge, Spinner, ErrorState } from '@/components/ui';
 import { useToast } from '@/components/toast-context';
 
@@ -39,11 +42,91 @@ function beep() {
   }
 }
 
+const BUFFER_PRESETS = [0, 10, 20, 30, 45];
+
+/** Live kitchen dial: pause/resume new orders and set the "we're busy" prep buffer per location today. */
+function KitchenControls() {
+  const supabase = getBrowserSupabase();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const { data: locations, isLoading } = useTodayLocations();
+  const [busy, setBusy] = useState(false);
+
+  async function change(row: LocationScheduleRow, change: { acceptingOrders?: boolean; prepBufferMinutes?: number }) {
+    setBusy(true);
+    try {
+      await updateKitchenControls(supabase, row.id, change);
+      await qc.invalidateQueries({ queryKey: ['today-locations'] });
+      await qc.invalidateQueries({ queryKey: ['pickup-options'] });
+    } catch {
+      toast.show('Could not update the kitchen controls.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (isLoading || !locations || locations.length === 0) return null;
+
+  return (
+    <div className="stack" style={{ gap: 10 }}>
+      <h2 style={{ fontSize: 'var(--text-h3)' }}>Kitchen controls (today)</h2>
+      {locations.map((row) => (
+        <div key={row.id} className="card card-pad stack" style={{ gap: 10 }}>
+          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <strong className="row" style={{ gap: 6 }}>
+              {row.pickup_type === 'home' ? <Home size={16} /> : <Truck size={16} />}
+              {PICKUP_TYPE_LABEL[row.pickup_type]} · {row.place}
+            </strong>
+            <button
+              className={`btn ${row.accepting_orders ? 'btn-success' : 'btn-danger'}`}
+              disabled={busy}
+              aria-pressed={!row.accepting_orders}
+              onClick={() => change(row, { acceptingOrders: !row.accepting_orders })}
+            >
+              {row.accepting_orders ? (
+                <>
+                  <Pause size={16} /> Pause orders
+                </>
+              ) : (
+                <>
+                  <Play size={16} /> Resume orders
+                </>
+              )}
+            </button>
+          </div>
+          {!row.accepting_orders ? (
+            <div className="banner banner-warn">Paused — customers can’t place new orders here right now.</div>
+          ) : null}
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span className="muted">Prep buffer:</span>
+            {BUFFER_PRESETS.map((m) => (
+              <button
+                key={m}
+                className={`btn ${row.prep_buffer_minutes === m ? 'btn-primary' : 'btn-outline'}`}
+                disabled={busy}
+                aria-pressed={row.prep_buffer_minutes === m}
+                onClick={() => change(row, { prepBufferMinutes: m })}
+              >
+                +{m}m
+              </button>
+            ))}
+          </div>
+          <span className="muted" style={{ fontSize: 'var(--text-caption)' }}>
+            Added on top of each item’s prep time, so customers see realistic pickup times when you’re busy.
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminOrdersPage() {
   const supabase = getBrowserSupabase();
   const qc = useQueryClient();
   const toast = useToast();
   const { data: orders, isLoading, isError, refetch } = useActiveOrders(true);
+  const { data: locations } = useTodayLocations();
+  const locationsById = new Map((locations ?? []).map((l) => [l.id, l]));
   const [soundOn, setSoundOn] = useState(false);
   const knownIds = useRef<Set<string>>(new Set());
 
@@ -101,6 +184,8 @@ export default function AdminOrdersPage() {
         </button>
       </div>
 
+      <KitchenControls />
+
       {isLoading ? (
         <Spinner />
       ) : isError ? (
@@ -121,6 +206,18 @@ export default function AdminOrdersPage() {
                   {order.pickup_slot ? `Pickup ${formatSlotTime(order.pickup_slot)}` : 'ASAP'} ·{' '}
                   {order.phone}
                 </div>
+                {order.location_id && locationsById.has(order.location_id) ? (
+                  <div className="row" style={{ gap: 6 }}>
+                    {locationsById.get(order.location_id)!.pickup_type === 'home' ? (
+                      <Home size={15} />
+                    ) : (
+                      <Truck size={15} />
+                    )}
+                    <span className="muted">
+                      {PICKUP_TYPE_LABEL[locationsById.get(order.location_id)!.pickup_type]}
+                    </span>
+                  </div>
+                ) : null}
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
                   {order.items.map((it) => (
                     <li key={it.id}>
