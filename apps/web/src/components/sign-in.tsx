@@ -26,7 +26,10 @@ export function SignIn({ next = '/account' }: { next?: string }) {
     if (googleReal) {
       const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(target)}`;
       try {
-        await signInWithGoogle(supabase, redirectTo);
+        // signInWithGoogle uses skipBrowserRedirect (for the mobile deep-link flow),
+        // so on web we navigate to the returned OAuth URL ourselves.
+        const data = await signInWithGoogle(supabase, redirectTo);
+        if (data?.url) window.location.assign(data.url);
       } catch {
         toast.show(t('signin.googleFailed'), 'error');
       }
