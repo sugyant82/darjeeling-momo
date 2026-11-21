@@ -33,8 +33,8 @@ export default function CartPage() {
 
       <div className="stack">
         {lines.map((line) => (
-          <div key={line.id} className="card card-pad row" style={{ alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}>
+          <div key={line.id} className="card card-pad row" style={{ alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 'min(100%, 150px)' }}>
               <strong>{line.name}</strong>
               {line.selectedOptions.length > 0 ? (
                 <div className="muted" style={{ fontSize: 'var(--text-label)' }}>

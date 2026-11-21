@@ -24,7 +24,7 @@ import { BrandLockup, Koru, LogoMark, PrayerFlags, Tagline } from '@/components/
 import { Splash } from '@/components/splash';
 import { MenuCard } from '@/components/menu-card';
 import { ItemSheet } from '@/components/item-sheet';
-import { SkeletonCard } from '@/components/ui';
+import { Spinner } from '@/components/ui';
 import { appName } from '@/lib/env';
 
 /** Stagger offset for an intro animation (see .reveal in globals.css). */
@@ -180,12 +180,7 @@ function TodayCard() {
       <LogoMark variant="navy" className="today-mark" />
       <p className="bento-kicker">{t('home.todayKicker', { venue })}</p>
       {isLoading ? (
-        <div className="today-loading" role="status">
-          <span className="sr-only">{t('ui.loading')}</span>
-          <span className="skeleton-dark" style={{ width: '40%', height: 26 }} />
-          <span className="skeleton-dark" style={{ width: '75%', height: 34 }} />
-          <span className="skeleton-dark" style={{ width: '60%', height: 18 }} />
-        </div>
+        <Spinner label={t('ui.loading')} />
       ) : isError || !data || data.is_closed ? (
         <>
           <span className="status-chip is-closed">
@@ -285,11 +280,15 @@ function Favourites({ onOpen }: { onOpen: (item: MenuItem) => void }) {
           </Link>
         }
       />
-      <div className="fav-row">
-        {isLoading
-          ? [0, 1, 2].map((i) => <SkeletonCard key={i} />)
-          : items.map((item, i) => <MenuCard key={item.id} item={item} onOpen={onOpen} index={i} />)}
-      </div>
+      {isLoading ? (
+        <Spinner label={t('ui.loading')} />
+      ) : (
+        <div className="fav-row">
+          {items.map((item, i) => (
+            <MenuCard key={item.id} item={item} onOpen={onOpen} index={i} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

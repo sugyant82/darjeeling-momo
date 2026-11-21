@@ -6,7 +6,7 @@ import { useMenu } from '@/hooks/queries';
 import { useT } from '@/lib/i18n';
 import { MenuCard } from '@/components/menu-card';
 import { ItemSheet } from '@/components/item-sheet';
-import { EmptyState, ErrorState, PageHeading, SkeletonCard } from '@/components/ui';
+import { EmptyState, ErrorState, PageHeading, Spinner } from '@/components/ui';
 
 export default function MenuPage() {
   const { t } = useT();
@@ -20,11 +20,7 @@ export default function MenuPage() {
       </PageHeading>
 
       {isLoading ? (
-        <div className="menu-grid">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
+        <Spinner label={t('menu.loading')} />
       ) : isError ? (
         <ErrorState message={t('menu.loadError')} onRetry={() => refetch()} />
       ) : !menu || menu.length === 0 ? (

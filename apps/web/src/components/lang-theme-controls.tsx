@@ -7,7 +7,7 @@ import { useT } from '@/lib/i18n';
 import { FlagIndia, FlagNepal, FlagNZ } from './flags';
 import type { Lang } from '@/lib/prefs';
 
-const LANGS: { code: Lang; Flag: typeof FlagNZ; labelKey: 'lang.en' | 'lang.hi' | 'lang.ne' }[] = [
+export const LANGS: { code: Lang; Flag: typeof FlagNZ; labelKey: 'lang.en' | 'lang.hi' | 'lang.ne' }[] = [
   { code: 'en', Flag: FlagNZ, labelKey: 'lang.en' },
   { code: 'hi', Flag: FlagIndia, labelKey: 'lang.hi' },
   { code: 'ne', Flag: FlagNepal, labelKey: 'lang.ne' },

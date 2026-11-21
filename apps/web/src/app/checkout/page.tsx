@@ -28,9 +28,10 @@ import { EmptyState, Spinner } from '@/components/ui';
 import { useToast } from '@/components/toast-context';
 
 export default function CheckoutPage() {
+  const { t } = useT();
   const { user, loading } = useAuth();
 
-  if (loading) return <Spinner />;
+  if (loading) return <Spinner label={t('ui.loading')} />;
   if (!user) {
     return (
       <div className="container">

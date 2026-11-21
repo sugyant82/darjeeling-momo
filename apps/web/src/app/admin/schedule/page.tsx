@@ -246,8 +246,8 @@ export default function ScheduleManagerPage() {
                 {date === today ? ' · Today' : ''}
               </strong>
               {rows.map((row) => (
-                <div key={row.id} className="row" style={{ justifyContent: 'space-between', gap: 10 }}>
-                  <div className="row" style={{ gap: 8 }}>
+                <div key={row.id} className="row" style={{ justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <div className="row" style={{ gap: 8, flex: 1, minWidth: 0 }}>
                     {row.pickup_type === 'home' ? <Home size={16} /> : <Truck size={16} />}
                     <span>
                       <strong>{PICKUP_TYPE_LABEL[row.pickup_type]}</strong> ·{' '}

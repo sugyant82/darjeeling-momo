@@ -363,12 +363,20 @@ img {
   height: 44px;
   border-radius: var(--radius-pill);
   color: var(--color-white);
+  /* Reset the <button> UA chrome (the ☰ uses this class) so it's not browser grey, then
+     give it a light-navy resting fill (white veil over the navy bar) that deepens on hover. */
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
   transition:
     background-color 0.2s ease,
     scale 0.2s var(--ease-out);
 }
 .nav-icon:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.18);
 }
 .nav-icon:active {
   scale: 0.92;
@@ -631,6 +639,8 @@ img {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  /* Let a field shrink inside a flex row instead of forcing overflow on narrow screens. */
+  min-width: 0;
 }
 .field label {
   font-size: var(--text-label);
@@ -641,6 +651,7 @@ img {
 .textarea,
 .select {
   width: 100%;
+  min-width: 0;
   min-height: 44px;
   padding: 10px 14px;
   border: 1px solid var(--color-border);
@@ -926,34 +937,6 @@ img {
   color: rgba(251, 246, 236, 0.65);
 }
 
-/* Skeleton loading */
-.skeleton {
-  background: linear-gradient(90deg, #efe9da 25%, #f6f1e4 37%, #efe9da 63%);
-  background-size: 400% 100%;
-  animation: shimmer 1.3s ease infinite;
-  border-radius: var(--radius-md);
-}
-.skeleton-dark {
-  display: block;
-  border-radius: 10px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.06) 25%,
-    rgba(255, 255, 255, 0.14) 37%,
-    rgba(255, 255, 255, 0.06) 63%
-  );
-  background-size: 400% 100%;
-  animation: shimmer 1.3s ease infinite;
-}
-@keyframes shimmer {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: 0 0;
-  }
-}
-
 /* ---------------------------------------------------------------------------
    Home
 --------------------------------------------------------------------------- */
@@ -1209,6 +1192,9 @@ img {
 }
 .marquee-item.is-reo {
   color: var(--color-marigold);
+  /* Baloo 2 breaks macron vowels (ā → a + a stray, unpositioned macron), so te reo
+     greetings use Inter, which renders them correctly. */
+  font-family: var(--font-body);
 }
 .marquee-sep {
   width: 7px;
@@ -1390,12 +1376,6 @@ img {
   gap: 10px;
   margin-top: auto;
   padding-top: 10px;
-}
-.today-loading {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
 }
 .status-chip {
   display: inline-flex;
@@ -2145,12 +2125,36 @@ html[data-splash='show'] .splash[data-leaving] {
   list-style: none;
   margin: 0;
   padding: 6px;
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
+  /* Navy dropdown to match the header bar + the mobile panel. */
+  background: var(--color-indigo);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   box-shadow: var(--shadow-lift);
   z-index: 200;
   animation: menu-pop 0.16s var(--ease-out);
+}
+:root[data-theme='dark'] .lang-menu {
+  background: #222c44;
+}
+/* Navy dropdown rows: white at rest, marigold text + a nudge on hover, bg stays navy. */
+.lang-menu .lang-option {
+  color: var(--color-white);
+  background: transparent;
+  transition:
+    color 0.18s ease,
+    transform 0.18s var(--ease-out);
+}
+.lang-menu .lang-option:hover {
+  color: var(--color-marigold);
+  background: transparent;
+  transform: scale(1.02);
+}
+.lang-menu .lang-option:active {
+  transform: scale(0.98);
+}
+.lang-menu .lang-option.is-active {
+  color: var(--color-marigold);
+  background: transparent;
 }
 @keyframes menu-pop {
   from {
@@ -2186,6 +2190,202 @@ html[data-splash='show'] .splash[data-leaving] {
 }
 
 /* ---------------------------------------------------------------------------
+   Mobile header: collapse the nav into a ☰ panel (components/mobile-nav.tsx)
+--------------------------------------------------------------------------- */
+.mobile-nav {
+  display: none;
+  align-items: center;
+  gap: 2px;
+}
+/* Below 720px the full nav folds away and the compact control takes over. */
+@media (max-width: 719.98px) {
+  .header-nav {
+    display: none;
+  }
+  .mobile-nav {
+    display: inline-flex;
+  }
+  /* Lock the page while the panel is open; the panel scrolls on its own. */
+  html.mobile-nav-open,
+  html.mobile-nav-open body {
+    overflow: hidden;
+  }
+}
+.nav-toggle {
+  margin-left: 2px;
+}
+.mobile-backdrop {
+  position: fixed;
+  top: calc(var(--header-h) + 4px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 55;
+  background: rgba(10, 14, 22, 0.45);
+  animation: fade-in 0.18s ease;
+}
+.mobile-panel {
+  position: fixed;
+  top: calc(var(--header-h) + 4px);
+  left: 0;
+  right: 0;
+  z-index: 70;
+  max-height: calc(100dvh - var(--header-h) - 4px);
+  overflow-y: auto;
+  padding: 14px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  /* Always navy with white text (both themes) — it reads as an extension of the header bar. */
+  background: var(--color-indigo);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0 0 22px 22px;
+  box-shadow: var(--shadow-lift);
+  animation: panel-drop 0.2s var(--ease-out);
+}
+:root[data-theme='dark'] .mobile-panel {
+  background: #222c44;
+}
+@keyframes panel-drop {
+  from {
+    opacity: 0;
+    translate: 0 -10px;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.mobile-panel nav {
+  margin: 0;
+}
+.mobile-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* Rows: navy bg (inherited from the panel) + white text at rest; hover recolors the
+   text to marigold and magnifies slightly — the background never changes. */
+.mobile-link,
+.mobile-pref,
+.mobile-panel .lang-option {
+  color: var(--color-white);
+  background: transparent;
+  transition:
+    color 0.18s ease,
+    transform 0.18s var(--ease-out);
+}
+.mobile-link:hover,
+.mobile-pref:hover,
+.mobile-panel .lang-option:hover {
+  color: var(--color-marigold);
+  background: transparent; /* override the shared dropdown hover fill; panel stays navy */
+  transform: scale(1.015);
+}
+.mobile-link:active,
+.mobile-pref:active,
+.mobile-panel .lang-option:active {
+  transform: scale(0.99);
+}
+.mobile-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 12px;
+  border-radius: 12px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 16px;
+  text-decoration: none;
+}
+/* Current page / selected language: marigold, with an accent so it's distinct from hover. */
+.mobile-link.is-active {
+  color: var(--color-marigold);
+  box-shadow: inset 3px 0 0 var(--color-marigold);
+}
+.mobile-panel .lang-option.is-active {
+  color: var(--color-marigold);
+  background: transparent;
+}
+/* Lucide icons follow the text colour (white → marigold); flag SVGs keep their own fills. */
+.mobile-link svg,
+.mobile-pref > svg {
+  color: inherit;
+  opacity: 0.85;
+}
+.mobile-link:hover svg,
+.mobile-link.is-active svg,
+.mobile-pref:hover > svg {
+  opacity: 1;
+}
+.mobile-section-label {
+  margin: 14px 12px 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+.mobile-pref {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+}
+.switch {
+  margin-left: auto;
+  flex: none;
+  width: 46px;
+  height: 27px;
+  border-radius: 999px;
+  /* Visible "off" track on the navy panel. */
+  background: rgba(255, 255, 255, 0.28);
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+.mobile-pref[aria-checked='true'] .switch {
+  background: var(--color-marigold);
+}
+.switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: translate 0.2s var(--ease-out);
+}
+.mobile-pref[aria-checked='true'] .switch-thumb {
+  translate: 19px 0;
+}
+.mobile-langs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* On the narrowest phones, shrink the wordmark so brand + cart + ☰ never collide. */
+@media (max-width: 360px) {
+  .header-brand .lockup {
+    font-size: 21px;
+  }
+}
+/* Long inline tokens (env keys, filenames) wrap instead of forcing a horizontal scroll. */
+code {
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------------------
    Dark-mode refinements for light glass surfaces
 --------------------------------------------------------------------------- */
 :root[data-theme='dark'] .lockup-light .lockup-bottom {
@@ -2214,4 +2414,135 @@ html[data-splash='show'] .splash[data-leaving] {
 }
 :root[data-theme='dark'] .site-header-bar {
   background: rgba(26, 33, 52, 0.92);
+}
+
+/* ---------------------------------------------------------------------------
+   Momo loader (components/momo-loader.tsx) — a spinning dumpling for DB loads
+--------------------------------------------------------------------------- */
+.momo-loader {
+  display: block;
+  overflow: visible;
+}
+/* A gentle hop, with the shadow squashing in time. */
+.momo-bob {
+  animation: momo-bob 1.2s ease-in-out infinite;
+}
+@keyframes momo-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2.5px);
+  }
+}
+.momo-shadow {
+  fill: #000;
+  opacity: 0.16;
+  transform-box: view-box;
+  transform-origin: 50px 87px;
+  animation: momo-shadow 1.2s ease-in-out infinite;
+}
+:root[data-theme='dark'] .momo-shadow {
+  opacity: 0.5;
+}
+@keyframes momo-shadow {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.84);
+  }
+}
+/* Each pleat is the outline squeezed by sin(angle): hidden on the back half of the turn
+   (right edge → left edge), visible as it sweeps left → right across the front.
+   ease-in-out between ±1 approximates the sine. */
+.momo-pleat {
+  transform-box: view-box;
+  transform-origin: 50px 50px;
+  animation: momo-pleat 2.4s ease-in-out infinite;
+}
+@keyframes momo-pleat {
+  0% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+  49.9% {
+    opacity: 0;
+  }
+  50% {
+    transform: scaleX(-1);
+    opacity: 1;
+  }
+  99.9% {
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+.momo-steam path {
+  stroke: var(--color-muted);
+  animation: momo-steam 1.9s ease-in-out infinite;
+}
+.momo-steam path:nth-child(2) {
+  animation-delay: 0.3s;
+}
+.momo-steam path:nth-child(3) {
+  animation-delay: 0.6s;
+}
+@keyframes momo-steam {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(2px);
+  }
+  50% {
+    opacity: 0.85;
+    transform: translateY(-2px);
+  }
+}
+/* A centered loader block with its label. */
+.momo-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 0;
+}
+.momo-loading .momo-caption {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--text-label);
+  color: var(--color-muted);
+}
+/* Inside the dark "today" card (indigo in both themes): cream caption + steam. */
+.bento-today .momo-loading {
+  padding: 24px 0 8px;
+}
+.bento-today .momo-loading .momo-caption {
+  color: rgba(251, 246, 236, 0.72);
+}
+.bento-today .momo-steam path {
+  stroke: rgba(251, 246, 236, 0.55);
+}
+.bento-today .momo-shadow {
+  opacity: 0.4;
+}
+/* Reduced motion: a still momo with its front pleats in place (the global rule would
+   otherwise leave every pleat on its hidden final frame). */
+@media (prefers-reduced-motion: reduce) {
+  .momo-pleat {
+    animation: none !important;
+    transform: scaleX(var(--s, 1));
+    opacity: var(--o, 0);
+  }
+  .momo-bob,
+  .momo-shadow,
+  .momo-steam path {
+    animation: none !important;
+  }
 }

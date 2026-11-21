@@ -20,8 +20,9 @@ import { Spinner, EmptyState, PageHeading } from '@/components/ui';
 import { useToast } from '@/components/toast-context';
 
 export default function AccountPage() {
+  const { t } = useT();
   const { user, loading } = useAuth();
-  if (loading) return <Spinner />;
+  if (loading) return <Spinner label={t('ui.loading')} />;
   if (!user) {
     return (
       <div className="container">
@@ -124,7 +125,7 @@ function Account({ userId, email }: { userId: string; email: string }) {
       <section className="stack">
         <h2>{t('account.history')}</h2>
         {isLoading ? (
-          <Spinner />
+          <Spinner label={t('ui.loading')} />
         ) : !orders || orders.length === 0 ? (
           <EmptyState
             title={t('account.noOrders')}

@@ -9,6 +9,7 @@ import { useCart } from './cart-context';
 import { useAuth } from './auth-context';
 import { BrandLockup } from './brand';
 import { LangThemeControls } from './lang-theme-controls';
+import { MobileNav } from './mobile-nav';
 import { FlagStripe } from './ui';
 
 export function Header() {
@@ -27,7 +28,7 @@ export function Header() {
             <BrandLockup variant="navy" compact />
           </Link>
           <div className="spacer" />
-          <nav className="header-nav" aria-label="Primary">
+          <nav className="header-nav" aria-label={t('nav.primary')}>
             <Link
               href="/menu"
               className={`nav-link${isActive('/menu') ? ' is-active' : ''}`}
@@ -66,6 +67,7 @@ export function Header() {
             </Link>
             <LangThemeControls />
           </nav>
+          <MobileNav />
         </div>
       </div>
       <FlagStripe />

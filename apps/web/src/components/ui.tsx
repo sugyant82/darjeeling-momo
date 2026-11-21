@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { flagStripe } from '@darjeeling/tokens';
 import { STATUS_COLOR, STATUS_LABEL, type OrderStatus } from '@darjeeling/shared';
 import type { Tag } from '@darjeeling/shared/types';
+import { MomoLoader } from './momo-loader';
 
 export function FlagStripe() {
   return (
@@ -56,10 +57,12 @@ export function StatusBadge({ status }: { status: OrderStatus }) {
   );
 }
 
+/** Data-loading state: the spinning momo with a caption (announced politely). */
 export function Spinner({ label = 'Loading…' }: { label?: string }) {
   return (
-    <div className="text-center muted" role="status" style={{ padding: '32px 0' }}>
-      {label}
+    <div className="momo-loading" role="status">
+      <MomoLoader />
+      {label ? <span className="momo-caption">{label}</span> : <span className="sr-only">Loading</span>}
     </div>
   );
 }
@@ -97,17 +100,6 @@ export function ErrorState({
           Try again
         </button>
       ) : null}
-    </div>
-  );
-}
-
-export function SkeletonCard() {
-  return (
-    <div className="card card-pad stack" aria-hidden="true">
-      <div className="skeleton" style={{ height: 140 }} />
-      <div className="skeleton" style={{ height: 20, width: '60%' }} />
-      <div className="skeleton" style={{ height: 16, width: '90%' }} />
-      <div className="skeleton" style={{ height: 40, width: '100%' }} />
     </div>
   );
 }

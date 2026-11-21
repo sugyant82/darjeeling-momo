@@ -24,33 +24,10 @@ function emit() {
   for (const l of listeners) l();
 }
 
-let osCleanup: (() => void) | null = null;
 function subscribe(cb: () => void) {
   listeners.add(cb);
-  // Follow the OS theme while the viewer hasn't chosen explicitly.
-  if (!osCleanup && typeof window !== 'undefined' && window.matchMedia) {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const onOs = () => {
-      let stored: string | null = null;
-      try {
-        stored = localStorage.getItem(THEME_KEY);
-      } catch {
-        /* ignore */
-      }
-      if (stored !== 'light' && stored !== 'dark') {
-        document.documentElement.setAttribute('data-theme', mq.matches ? 'dark' : 'light');
-        emit();
-      }
-    };
-    mq.addEventListener('change', onOs);
-    osCleanup = () => mq.removeEventListener('change', onOs);
-  }
   return () => {
     listeners.delete(cb);
-    if (listeners.size === 0 && osCleanup) {
-      osCleanup();
-      osCleanup = null;
-    }
   };
 }
 
