@@ -1,0 +1,34 @@
+# Netlify deploy config for the web app (apps/web) in this pnpm monorepo.
+# Server logic (payments, webhooks, order creation) lives in Supabase Edge Functions,
+# so this deploys as Next.js pages + client-side calls to Supabase.
+
+[build]
+  # Build from the app package; pnpm resolves the workspace root above it, and
+  # turbo builds @darjeeling/web plus its workspace deps (shared, tokens) in order.
+  base = "apps/web"
+  command = "pnpm turbo run build --filter=@darjeeling/web"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  PNPM_VERSION = "9.15.9"
+
+# Official Next.js runtime (SSR, image optimization, headers). Auto-installed by Netlify.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# INTEGRATIONS_MODE=auto keeps placeholders working until real keys are set (so the
+# build won't be refused by assertProductionSafe). Switch to "production" only once
+# real Stripe / Google / store-URL values are in the Netlify env vars.
+[context.production.environment]
+  INTEGRATIONS_MODE = "auto"
+
+[context.deploy-preview.environment]
+  INTEGRATIONS_MODE = "auto"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
